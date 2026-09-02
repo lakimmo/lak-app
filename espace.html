@@ -138,17 +138,34 @@
   .report-row .r-arrow{ margin-left:auto; color:var(--ink-faint); flex:none; }
   .report-row .r-arrow svg{ width:16px;height:16px; }
 
-  .report-doc{ max-width:680px; }
-  .report-doc-header{ padding-bottom:20px; margin-bottom:22px; border-bottom:1px solid var(--line-strong); }
-  .report-doc-header .r-date{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-dim); }
-  .report-doc-header h2{ font-size:24px; margin-top:8px; }
-  .report-doc-body p{ color:var(--ink); font-size:15px; line-height:1.7; margin:0 0 16px; }
-  .report-doc-tasks{ margin-top:26px; padding-top:22px; border-top:1px solid var(--line); }
-  .report-doc-tasks h4{ font-family:var(--font-mono); font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:16px; }
-  .report-task{ padding:18px 0; border-top:1px solid var(--line); }
-  .report-task:first-of-type{ border-top:none; padding-top:0; }
-  .report-task h5{ font-family:var(--font-body); font-weight:800; font-size:15px; margin:0 0 6px; }
-  .report-task p{ color:var(--ink-dim); font-size:13.5px; margin:0 0 12px; }
+  .report-doc{ max-width:720px; padding:0; overflow:hidden; box-shadow:0 30px 70px -24px rgba(23,19,16,.4); }
+  .report-doc-close{ position:absolute; top:18px; right:18px; z-index:2; background:var(--bg-panel); }
+  .report-doc-bar{ height:6px; background:linear-gradient(90deg,var(--accent),#FF9152); }
+  .report-doc-inner{ padding:38px 42px 34px; }
+  .report-doc-header{ padding-bottom:22px; margin-bottom:24px; border-bottom:1px solid var(--line-strong); padding-right:40px; }
+  .report-doc-header h2{ font-size:27px; margin:10px 0 12px; }
+  .report-doc-period{ font-family:var(--font-mono); font-size:12.5px; color:var(--accent); font-weight:600; letter-spacing:.02em; display:inline-flex; align-items:center; gap:7px; }
+  .report-doc-period svg{ width:13px;height:13px; }
+  .report-doc-body p{ color:var(--ink); font-size:15px; line-height:1.75; margin:0 0 14px; }
+  .report-doc-body p:last-child{ margin-bottom:0; }
+  .report-doc-tasks{ margin-top:30px; padding-top:26px; border-top:1px solid var(--line); }
+  .report-doc-tasks-head{ display:flex; align-items:center; gap:10px; margin-bottom:18px; }
+  .report-doc-tasks-head h4{ font-family:var(--font-mono); font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-dim); margin:0; }
+  .report-doc-tasks-head .count-pill{ background:var(--ink); color:#fff; border-radius:999px; padding:2px 9px; font-size:10.5px; font-family:var(--font-mono); flex:none; }
+  .report-task-grid{ display:flex; flex-direction:column; gap:14px; }
+  .report-task{ padding:18px 20px; }
+  .report-task-head{ display:flex; align-items:center; gap:10px; margin-bottom:2px; }
+  .report-task-head .rt-check{ width:20px;height:20px; border-radius:50%; background:var(--success); color:#fff; display:flex; align-items:center; justify-content:center; flex:none; }
+  .report-task-head .rt-check svg{ width:11px;height:11px; }
+  .report-task h5{ font-family:var(--font-body); font-weight:800; font-size:14.5px; margin:0; }
+  .report-task p{ color:var(--ink-dim); font-size:13.5px; line-height:1.55; margin:8px 0 0; }
+  .report-task-video{ margin-top:14px; border-radius:4px; overflow:hidden; border:1px solid var(--line-strong); }
+  .report-task-video iframe{ width:100%; aspect-ratio:16/9; border:none; display:block; background:#000; }
+  .report-task-link{ margin-top:12px; display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:11.5px; color:var(--accent); text-decoration:underline; }
+  .report-doc-footer{ display:flex; align-items:center; justify-content:space-between; margin-top:32px; padding-top:20px; border-top:1px solid var(--line); }
+  .report-doc-footer .rdf-mark{ font-family:var(--font-display); font-weight:800; font-size:14px; }
+  .report-doc-footer .rdf-mark em{ font-style:normal; color:var(--accent); }
+  .report-doc-footer .rdf-note{ font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint); }
 
   /* ============ CAL ============ */
   .cal-embed-space{ background:var(--bg-panel); border:1px solid var(--ink); overflow:hidden; height:640px; padding:4px; }
@@ -274,11 +291,12 @@
   function stageLabel(s){ return STAGE_LABELS[s] || (s ? s.charAt(0).toUpperCase() + s.slice(1) : '—'); }
   function videoEmbedUrl(link){
     if(!link) return null;
-    var yt = link.match(/(?:youtu\.be\/|youtube\.com\/watch\?v=)([\w-]+)/);
+    link = link.trim();
+    var yt = link.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]+)/i);
     if(yt) return 'https://www.youtube.com/embed/' + yt[1];
-    var loom = link.match(/loom\.com\/share\/([\w-]+)/);
+    var loom = link.match(/loom\.com\/(?:share|embed)\/([\w-]+)/i);
     if(loom) return 'https://www.loom.com/embed/' + loom[1];
-    var vimeo = link.match(/vimeo\.com\/(\d+)/);
+    var vimeo = link.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
     if(vimeo) return 'https://player.vimeo.com/video/' + vimeo[1];
     return null;
   }
@@ -361,7 +379,7 @@
         if(!id) return;
         var item = current.roadmap_items.find(function(x){ return x.id === id; });
         if(!item) return;
-        rpc('upsert_roadmap_item', { p_token:token, p_item_id:id, p_stage:col.dataset.colStage, p_title:item.title, p_description:item.description, p_video_link:item.video_link })
+        rpc('upsert_roadmap_item', { p_token:token, p_item_id:id, p_stage:col.dataset.colStage, p_title:item.title, p_description:item.description, p_video_link:item.video_link, p_deadline:item.deadline || null, p_completed_at:item.completed_at || null })
           .then(function(){ item.stage = col.dataset.colStage; renderKanban(current.roadmap_stages, current.roadmap_items); });
       });
     });
@@ -391,11 +409,12 @@
     return '<div class="roadmap-card plaque" draggable="true" data-item-id="' + it.id + '">' +
       '<h4>' + escapeHtml(it.title) + '</h4>' +
       (it.video_link ? '<span class="rc-video"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7Z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>' + (it.video_watched ? 'Vidéo vue' : 'Vidéo à voir') + '</span>' : '') +
+      (it.completed_at ? '<span class="rc-video" style="color:var(--success);">Fait le ' + formatDate(it.completed_at) + '</span>' : (it.deadline ? '<span class="rc-video">Deadline ' + formatDate(it.deadline) + '</span>' : '')) +
     '</div>';
   }
 
   function openTaskModal(itemId, newStage){
-    var item = itemId ? current.roadmap_items.find(function(x){ return x.id === itemId; }) : { title:'', description:'', video_link:'', video_watched:false, stage:newStage };
+    var item = itemId ? current.roadmap_items.find(function(x){ return x.id === itemId; }) : { title:'', description:'', video_link:'', video_watched:false, stage:newStage, deadline:null, completed_at:null };
     var embedUrl = videoEmbedUrl(item.video_link);
     var overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
@@ -403,11 +422,15 @@
       '<div class="modal-panel plaque">' +
         '<span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>' +
         '<div class="modal-head"><h2 style="font-size:19px;">' + (itemId ? 'Modifier la tâche' : 'Nouvelle tâche') + '</h2><button class="modal-close" id="taskClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
-        (embedUrl ? '<iframe class="video-embed" src="' + embedUrl + '" allowfullscreen></iframe>' : '') +
+        (embedUrl ? '<iframe class="video-embed" src="' + embedUrl + '" allowfullscreen></iframe>' : (item.video_link ? '<a href="' + escapeHtml(item.video_link) + '" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="margin-bottom:16px;">Voir la vidéo ↗</a>' : '')) +
         '<div class="field"><label>Titre</label><input type="text" id="taskTitle" value="' + escapeHtml(item.title) + '"></div>' +
         '<div class="field"><label>Description</label><textarea id="taskDesc">' + escapeHtml(item.description || '') + '</textarea></div>' +
         '<div class="field"><label>Lien vidéo (facultatif)</label><input type="text" id="taskVideo" placeholder="https://..." value="' + escapeHtml(item.video_link || '') + '"></div>' +
         (item.video_link ? '<label style="display:flex;align-items:center;gap:8px;font-size:13.5px;margin-bottom:16px;cursor:pointer;"><input type="checkbox" id="taskWatched" ' + (item.video_watched ? 'checked' : '') + '> Vidéo visionnée</label>' : '') +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">' +
+          '<div class="field"><label>Deadline</label><input type="date" id="taskDeadline" value="' + (item.deadline || '') + '"></div>' +
+          '<div class="field"><label>Date de réalisation</label><input type="date" id="taskCompleted" value="' + (item.completed_at || '') + '"></div>' +
+        '</div>' +
         '<div class="detail-actions">' +
           '<button class="btn btn-accent btn-sm" id="taskSave">Enregistrer</button>' +
           (itemId ? '<button class="btn btn-outline btn-sm" id="taskDelete">Supprimer</button>' : '') +
@@ -422,16 +445,18 @@
       if(!title){ alert('Le titre est requis.'); return; }
       var description = overlay.querySelector('#taskDesc').value;
       var videoLink = overlay.querySelector('#taskVideo').value.trim();
-      rpc('upsert_roadmap_item', { p_token:token, p_item_id:itemId || null, p_stage:item.stage, p_title:title, p_description:description, p_video_link:videoLink || null })
+      var deadline = overlay.querySelector('#taskDeadline').value || null;
+      var completedAt = overlay.querySelector('#taskCompleted').value || null;
+      rpc('upsert_roadmap_item', { p_token:token, p_item_id:itemId || null, p_stage:item.stage, p_title:title, p_description:description, p_video_link:videoLink || null, p_deadline:deadline, p_completed_at:completedAt })
         .then(function(id){
           if(!id) return;
           var watchedEl = overlay.querySelector('#taskWatched');
           var applyWatched = function(){
             if(itemId){
               var idx = current.roadmap_items.findIndex(function(x){ return x.id === itemId; });
-              current.roadmap_items[idx] = Object.assign({}, current.roadmap_items[idx], { title:title, description:description, video_link:videoLink, video_watched: watchedEl ? watchedEl.checked : current.roadmap_items[idx].video_watched });
+              current.roadmap_items[idx] = Object.assign({}, current.roadmap_items[idx], { title:title, description:description, video_link:videoLink, deadline:deadline, completed_at:completedAt, video_watched: watchedEl ? watchedEl.checked : current.roadmap_items[idx].video_watched });
             } else {
-              current.roadmap_items.push({ id:id, title:title, description:description, video_link:videoLink, video_watched:false, stage:item.stage, position: current.roadmap_items.length });
+              current.roadmap_items.push({ id:id, title:title, description:description, video_link:videoLink, video_watched:false, stage:item.stage, position: current.roadmap_items.length, deadline:deadline, completed_at:completedAt });
             }
             renderKanban(current.roadmap_stages, current.roadmap_items);
             document.getElementById('dashRoadmapCount').textContent = current.roadmap_items.length;
@@ -458,6 +483,7 @@
 
   /* ---------------- Messages ---------------- */
   function formatTime(d){ return new Date(d).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }); }
+  function formatDate(d){ if(!d) return '—'; return new Date(d).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' }); }
   function loadMessages(){
     rpc('get_client_messages', { p_token: token }).then(function(msgs){
       var thread = document.getElementById('msgThread');
@@ -500,24 +526,35 @@
     if(!r) return;
     var tasks = Array.isArray(r.tasks_snapshot) ? r.tasks_snapshot : [];
     var paragraphs = (r.content || '').split(/\n\s*\n/).filter(Boolean);
+    var periodHtml = (r.period_start && r.period_end) ?
+      '<div class="report-doc-period"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="1"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>Du ' + formatDate(r.period_start) + ' au ' + formatDate(r.period_end) + '</div>' : '';
 
     var overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML =
-      '<div class="modal-panel plaque report-doc">' +
+      '<div class="plaque report-doc">' +
         '<span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>' +
-        '<div class="modal-head"><div></div><button class="modal-close" id="repDocClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
-        '<div class="report-doc-header"><span class="r-date">LAK · Rapport de suivi</span><h2>' + escapeHtml(r.title) + '</h2></div>' +
-        '<div class="report-doc-body">' + paragraphs.map(function(p){ return '<p>' + escapeHtml(p) + '</p>'; }).join('') + '</div>' +
-        (tasks.length ? '<div class="report-doc-tasks"><h4>Livrables (' + tasks.length + ')</h4>' +
-          tasks.map(function(t){
-            var embedUrl = videoEmbedUrl(t.video_link);
-            return '<div class="report-task"><h5>' + escapeHtml(t.title) + '</h5>' +
-              (t.description ? '<p>' + escapeHtml(t.description) + '</p>' : '') +
-              (embedUrl ? '<iframe class="video-embed" src="' + embedUrl + '" allowfullscreen></iframe>' : '') +
-            '</div>';
-          }).join('') +
-        '</div>' : '') +
+        '<button class="modal-close report-doc-close" id="repDocClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button>' +
+        '<div class="report-doc-bar"></div>' +
+        '<div class="report-doc-inner">' +
+          '<div class="report-doc-header"><span class="eyebrow">LAK · Rapport de suivi</span><h2>' + escapeHtml(r.title) + '</h2>' + periodHtml + '</div>' +
+          '<div class="report-doc-body">' + paragraphs.map(function(p){ return '<p>' + escapeHtml(p) + '</p>'; }).join('') + '</div>' +
+          (tasks.length ? '<div class="report-doc-tasks">' +
+            '<div class="report-doc-tasks-head"><h4>Livrables</h4><span class="count-pill">' + tasks.length + '</span></div>' +
+            '<div class="report-task-grid">' +
+            tasks.map(function(t){
+              var embedUrl = videoEmbedUrl(t.video_link);
+              return '<div class="report-task plaque"><span class="tick tl"></span><span class="tick br"></span>' +
+                '<div class="report-task-head"><span class="rt-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></span><h5>' + escapeHtml(t.title) + '</h5></div>' +
+                (t.description ? '<p>' + escapeHtml(t.description) + '</p>' : '') +
+                (embedUrl ? '<div class="report-task-video"><iframe src="' + embedUrl + '" allowfullscreen></iframe></div>' :
+                  (t.video_link ? '<a class="report-task-link" href="' + escapeHtml(t.video_link) + '" target="_blank" rel="noopener">Voir la vidéo ↗</a>' : '')) +
+              '</div>';
+            }).join('') +
+            '</div>' +
+          '</div>' : '') +
+          '<div class="report-doc-footer"><div class="rdf-mark">L<em>A</em>K</div><div class="rdf-note">Rapport généré le ' + formatDate(r.created_at) + '</div></div>' +
+        '</div>' +
       '</div>';
     document.body.appendChild(overlay);
     overlay.addEventListener('click', function(e){ if(e.target === overlay) document.body.removeChild(overlay); });
