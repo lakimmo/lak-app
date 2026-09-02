@@ -1174,8 +1174,6 @@
   /* ---------------- Génération de rapport (IA) ---------------- */
   function openReportModal(client, parentOverlay){
     var items = roadmapForClient(client.id);
-    var stages = roadmapStagesForClient(client.id).slice().sort(function(a,b){ return a.position - b.position; });
-    var lastStageName = stages.length ? stages[stages.length - 1].name : null;
     var today = new Date().toISOString().slice(0,10);
 
     var overlay = document.createElement('div');
@@ -1186,13 +1184,13 @@
         '<div class="modal-head"><h2 style="font-size:19px;">Générer un rapport — ' + escapeHtml(client.name) + '</h2><button class="modal-close" id="repClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
         '<div id="repStepPick">' +
           '<div class="onb-field-row" style="margin-bottom:18px;"><div class="field"><label>Période — du</label><input type="date" id="repDateStart"></div><div class="field"><label>Au</label><input type="date" id="repDateEnd" value="' + today + '"></div></div>' +
-          '<p style="font-size:13.5px;color:var(--ink-dim);margin:0 0 6px;">Choisissez les tâches à inclure (la dernière colonne est pré-sélectionnée).</p>' +
+          '<p style="font-size:13.5px;color:var(--ink-dim);margin:0 0 6px;">Tâches avec une deadline dans la période — présélectionnées automatiquement (modifiable).</p>' +
           '<div id="repTaskList">' +
             (items.length ? items.map(function(it){
-              var checked = it.stage === lastStageName;
-              return '<label class="report-task-pick"><input type="checkbox" data-rep-task="' + it.id + '"' + (checked ? ' checked' : '') + '><span><span class="rt-title">' + escapeHtml(it.title) + '</span><span class="rt-sub"> — ' + escapeHtml(roadmapStageLabel(it.stage)) + (it.video_link ? (it.video_watched ? ' · vidéo vue' : ' · vidéo non vue') : '') + '</span></span></label>';
+              return '<label class="report-task-pick"><input type="checkbox" data-rep-task="' + it.id + '"><span><span class="rt-title">' + escapeHtml(it.title) + '</span><span class="rt-sub"> — ' + escapeHtml(roadmapStageLabel(it.stage)) + (it.deadline ? ' · échéance ' + formatDate(it.deadline) : '') + (it.video_link ? (it.video_watched ? ' · vidéo vue' : ' · vidéo non vue') : '') + '</span></span></label>';
             }).join('') : '<p class="empty-note">Aucune tâche dans la roadmap.</p>') +
           '</div>' +
+          '<div class="field" style="margin-top:18px;"><label>Bilan rapide</label><textarea id="repNotes" placeholder="Ce qui a été fait dans l\'ensemble sur la période, et ce qui est prévu prochainement. L\'IA s\'en sert pour rédiger l\'intro du rapport." style="min-height:110px;"></textarea></div>' +
           '<div class="detail-actions"><button class="btn btn-accent btn-sm" id="repGenerateBtn">Générer avec l\'IA</button></div>' +
         '</div>' +
         '<div id="repStepDraft" hidden>' +
@@ -1204,13 +1202,27 @@
     overlay.addEventListener('click', function(e){ if(e.target === overlay) document.body.removeChild(overlay); });
     overlay.querySelector('#repClose').addEventListener('click', function(){ document.body.removeChild(overlay); });
 
+    function computeAutoSelected(){
+      var start = overlay.querySelector('#repDateStart').value;
+      var end = overlay.querySelector('#repDateEnd').value;
+      overlay.querySelectorAll('[data-rep-task]').forEach(function(cb){
+        var it = items.find(function(x){ return x.id === cb.dataset.repTask; });
+        if(!it || !it.deadline){ cb.checked = false; return; }
+        cb.checked = (!start || it.deadline >= start) && (!end || it.deadline <= end);
+      });
+    }
+    computeAutoSelected();
+    overlay.querySelector('#repDateStart').addEventListener('change', computeAutoSelected);
+    overlay.querySelector('#repDateEnd').addEventListener('change', computeAutoSelected);
+
     var snapshot = [];
 
     overlay.querySelector('#repGenerateBtn').addEventListener('click', function(){
       var selected = Array.prototype.slice.call(overlay.querySelectorAll('[data-rep-task]:checked')).map(function(cb){
         return items.find(function(it){ return it.id === cb.dataset.repTask; });
       }).filter(Boolean);
-      if(!selected.length){ showToast('Sélectionnez au moins une tâche.'); return; }
+      var notes = overlay.querySelector('#repNotes').value.trim();
+      if(!notes){ showToast('Rédigez un bilan rapide avant de générer.'); return; }
       snapshot = selected.map(function(it){ return { title:it.title, description:it.description, video_link:it.video_link || null }; });
       var btn = overlay.querySelector('#repGenerateBtn');
       btn.disabled = true; btn.textContent = 'Génération en cours…';
@@ -1219,7 +1231,10 @@
         body: JSON.stringify({
           client_name: client.name,
           client_company: client.company,
-          tasks: selected.map(function(it){ return { title:it.title, description:it.description, video_link:it.video_link, video_watched:it.video_watched }; })
+          period_start: overlay.querySelector('#repDateStart').value || null,
+          period_end: overlay.querySelector('#repDateEnd').value || null,
+          agency_notes: notes,
+          tasks: selected.map(function(it){ return { title:it.title }; })
         })
       }).then(function(r){ return r.json().then(function(d){ return { ok:r.ok, d:d }; }); })
         .then(function(res){
