@@ -84,6 +84,8 @@
   .page-head p{ color:var(--ink-dim); font-size:13.5px; margin-top:6px; }
 
   /* ============ DASHBOARD ============ */
+  .briefing-card{ padding:26px 28px; margin-bottom:26px; border-left:4px solid var(--accent); }
+  .briefing-card p{ font-size:16.5px; line-height:1.65; color:var(--ink); margin:12px 0 0; }
   .dash-grid{ display:grid; grid-template-columns:1.3fr 1fr; gap:20px; align-items:start; }
   @media (max-width:900px){ .dash-grid{ grid-template-columns:1fr; } }
   .dash-card{ padding:22px; margin-bottom:20px; }
@@ -141,6 +143,19 @@
   .report-row .r-date{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-faint); margin-top:3px; }
   .report-row .r-arrow{ margin-left:auto; color:var(--ink-faint); flex:none; }
   .report-row .r-arrow svg{ width:16px;height:16px; }
+
+  /* ============ ADMINISTRATIF ============ */
+  .contract-card{ display:flex; align-items:center; gap:16px; padding:20px 22px; margin-bottom:26px; }
+  .contract-card .r-icon{ width:40px;height:40px; border:1px solid var(--line-strong); display:flex; align-items:center; justify-content:center; flex:none; color:var(--accent); }
+  .contract-card .r-icon svg{ width:19px;height:19px; }
+  .contract-card h3{ font-size:15.5px; margin:0; }
+  .contract-card p{ font-size:12.5px; color:var(--ink-dim); margin:3px 0 0; }
+  .invoice-row{ display:flex; align-items:center; gap:16px; padding:16px 20px; margin-bottom:10px; }
+  .invoice-row .r-icon{ width:38px;height:38px; border:1px solid var(--line-strong); display:flex; align-items:center; justify-content:center; flex:none; color:var(--accent); }
+  .invoice-row .r-icon svg{ width:17px;height:17px; }
+  .invoice-row h3{ font-size:14.5px; margin:0; }
+  .invoice-row .r-date{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-faint); margin-top:3px; }
+  .invoice-row .r-amount{ font-family:var(--font-mono); font-size:13px; color:var(--ink-dim); margin-left:auto; flex:none; }
 
   .report-doc{ max-width:720px; padding:0; overflow:hidden; box-shadow:0 30px 70px -24px rgba(23,19,16,.4); }
   .report-doc-close{ position:absolute; top:18px; right:18px; z-index:2; background:var(--bg-panel); }
@@ -214,8 +229,9 @@
       <nav class="side-nav">
         <button class="side-link active" data-page="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="8" height="8"/><rect x="13" y="3" width="8" height="5"/><rect x="13" y="12" width="8" height="9"/><rect x="3" y="15" width="8" height="6"/></svg> Dashboard</button>
         <button class="side-link" data-page="roadmap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V5M4 5l6 4-6 4M14 19V9M14 9l6 4-6 4"/></svg> Roadmap</button>
-        <button class="side-link" data-page="messages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10Z"/></svg> Messages</button>
+        <a class="side-link" href="https://wa.me/33769892601" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10Z"/></svg> Messages</a>
         <button class="side-link" data-page="reports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M9 12h6M9 16h6M9 8h2"/></svg> Rapports</button>
+        <button class="side-link" data-page="admin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 4h16v4H4zM4 10h16v10H4z"/><path d="M9 14h6"/></svg> Administratif</button>
         <button class="side-link" data-page="rdv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="16" rx="1"/><path d="M3 9h18M8 3v4M16 3v4"/></svg> Rendez-vous</button>
       </nav>
     </aside>
@@ -223,14 +239,21 @@
     <main class="main">
 
       <section data-page-panel="dashboard">
-        <div class="page-head"><span class="eyebrow">Votre espace</span><h1 id="dashGreeting" style="margin-top:8px;"></h1><p id="dashBriefing"></p></div>
+        <div class="page-head"><span class="eyebrow">Votre espace</span><h1 id="dashGreeting" style="margin-top:8px;"></h1></div>
+
+        <div class="briefing-card plaque" id="briefingCard" hidden>
+          <span class="tick tl"></span><span class="tick br"></span>
+          <span class="eyebrow">Message de l'équipe</span>
+          <p id="dashBriefing"></p>
+        </div>
+
         <div class="dash-grid">
           <div>
-            <div class="dash-card plaque"><span class="tick tl"></span><span class="tick br"></span><h3>Vos tâches d'onboarding</h3><ul class="task-list" id="onboardTasks"></ul></div>
+            <div class="dash-card plaque" id="formCard" hidden><span class="tick tl"></span><span class="tick br"></span><h3 id="formCardTitle">Formulaire à compléter</h3><p style="font-size:13.5px;color:var(--ink-dim);margin:0 0 14px;">Merci de le compléter pour la suite du projet.</p><a href="#" target="_blank" rel="noopener" class="btn btn-accent btn-sm" id="formLinkBtn">Remplir le formulaire</a></div>
+            <div class="dash-card plaque"><span class="tick tl"></span><span class="tick br"></span><h3>Roadmap</h3><div class="mini-num" id="dashRoadmapCount">0</div><div class="mini-label">objectifs au total</div></div>
           </div>
           <div>
-            <div class="dash-card plaque"><span class="tick tl"></span><span class="tick br"></span><h3>Roadmap</h3><div class="mini-num" id="dashRoadmapCount">0</div><div class="mini-label">objectifs au total</div></div>
-            <div class="dash-card plaque"><span class="tick tl"></span><span class="tick br"></span><h3>Un besoin ?</h3><p style="font-size:13.5px;color:var(--ink-dim);margin:0 0 14px;">Envoyez un message ou réservez un créneau directement.</p><div style="display:flex;gap:10px;flex-wrap:wrap;"><button class="btn btn-outline btn-sm" data-goto="messages">Écrire un message</button><button class="btn btn-outline btn-sm" data-goto="rdv">Prendre RDV</button></div></div>
+            <div class="dash-card plaque"><span class="tick tl"></span><span class="tick br"></span><h3>Un besoin ?</h3><p style="font-size:13.5px;color:var(--ink-dim);margin:0 0 14px;">Écrivez-nous directement ou réservez un créneau.</p><div style="display:flex;gap:10px;flex-wrap:wrap;"><a href="https://wa.me/33769892601" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Écrire sur WhatsApp</a><button class="btn btn-outline btn-sm" data-goto="rdv">Prendre RDV</button></div></div>
           </div>
         </div>
       </section>
@@ -240,21 +263,19 @@
         <div class="kanban" id="kanban"></div>
       </section>
 
-      <section data-page-panel="messages" hidden>
-        <div class="page-head"><span class="eyebrow">Échanges</span><h1 style="margin-top:8px;">Messages</h1><p>Écrivez directement à votre interlocuteur LAK.</p></div>
-        <div class="plaque" style="display:flex;flex-direction:column;">
-          <span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>
-          <div id="msgThread" style="display:flex;flex-direction:column;gap:12px;padding:20px;height:420px;overflow-y:auto;"></div>
-          <div style="display:flex;gap:10px;padding:0 20px 20px;">
-            <textarea id="msgInput" placeholder="Écrivez votre message…" style="flex:1;font-family:inherit;font-size:14px;padding:12px;border:1px solid var(--line-strong);resize:none;min-height:52px;"></textarea>
-            <button class="btn btn-accent" id="msgSend">Envoyer</button>
-          </div>
-        </div>
-      </section>
-
       <section data-page-panel="reports" hidden>
         <div class="page-head"><span class="eyebrow">Suivi</span><h1 style="margin-top:8px;">Rapports</h1><p>Les points d'avancement envoyés par l'équipe LAK.</p></div>
         <div id="reportsList"></div>
+      </section>
+
+      <section data-page-panel="admin" hidden>
+        <div class="page-head"><span class="eyebrow">Administratif</span><h1 style="margin-top:8px;">Contrat &amp; factures</h1><p>Votre contrat et l'ensemble de vos factures.</p></div>
+        <div class="contract-card plaque" id="contractCard" hidden>
+          <span class="r-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M9 12h6M9 16h6M9 8h2"/></svg></span>
+          <div><h3>Votre contrat</h3><p>Consultez le contrat signé pour ce projet.</p></div>
+          <a href="#" target="_blank" rel="noopener" class="btn btn-outline btn-sm" id="contractLinkBtn" style="margin-left:auto;">Voir ↗</a>
+        </div>
+        <div id="invoicesList"></div>
       </section>
 
       <section data-page-panel="rdv" hidden>
@@ -337,24 +358,36 @@
     var cfg = data.config || {};
     document.getElementById('sideClientName').textContent = data.company || data.name || '';
     document.getElementById('dashGreeting').textContent = 'Bonjour ' + (data.name || '') + '.';
-    document.getElementById('dashBriefing').textContent = cfg.briefing || '';
+
+    var briefingCard = document.getElementById('briefingCard');
+    briefingCard.hidden = !cfg.briefing;
+    if(cfg.briefing) document.getElementById('dashBriefing').textContent = cfg.briefing;
 
     var tasks = Array.isArray(cfg.tasks) ? cfg.tasks : [];
-    document.getElementById('onboardTasks').innerHTML = tasks.length ? tasks.map(function(t){
-      return '<li class="task-item' + (t.done ? ' done' : '') + '"><span class="t-check">' + (t.done ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 12l5 5L20 6"/></svg>' : '') + '</span><span class="t-label">' + escapeHtml(t.label) + '</span></li>';
-    }).join('') : '<p class="empty-note">Aucune tâche pour le moment.</p>';
+    var formTask = tasks.find(function(t){ return t.type === 'form'; });
+    var formCard = document.getElementById('formCard');
+    formCard.hidden = !(formTask && formTask.link);
+    if(formTask && formTask.link){
+      document.getElementById('formCardTitle').textContent = formTask.label || 'Formulaire à compléter';
+      document.getElementById('formLinkBtn').href = formTask.link;
+    }
+
+    var contract = cfg.contract || {};
+    var contractCard = document.getElementById('contractCard');
+    contractCard.hidden = !contract.url;
+    if(contract.url) document.getElementById('contractLinkBtn').href = contract.url;
 
     document.getElementById('dashRoadmapCount').textContent = (data.roadmap_items || []).length;
 
     renderKanban(data.roadmap_stages || [], data.roadmap_items || []);
 
-    document.querySelectorAll('.side-link').forEach(function(btn){
+    document.querySelectorAll('.side-link[data-page]').forEach(function(btn){
       btn.onclick = function(){
         document.querySelectorAll('.side-link').forEach(function(b){ b.classList.remove('active'); });
         btn.classList.add('active');
         document.querySelectorAll('[data-page-panel]').forEach(function(p){ p.hidden = (p.dataset.pagePanel !== btn.dataset.page); });
-        if(btn.dataset.page === 'messages') loadMessages();
         if(btn.dataset.page === 'reports') loadReports();
+        if(btn.dataset.page === 'admin') loadInvoices();
       };
     });
     document.querySelectorAll('[data-goto]').forEach(function(el){
@@ -494,26 +527,22 @@
     });
   }
 
-  /* ---------------- Messages ---------------- */
   function formatTime(d){ return new Date(d).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }); }
   function formatDate(d){ if(!d) return '—'; return new Date(d).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' }); }
-  function loadMessages(){
-    rpc('get_client_messages', { p_token: token }).then(function(msgs){
-      var thread = document.getElementById('msgThread');
-      thread.innerHTML = msgs.length ? msgs.map(function(m){
-        var mine = m.sender === 'client';
-        return '<div style="max-width:75%;padding:10px 13px;font-size:14px;' + (mine ? 'align-self:flex-end;background:var(--accent);color:#fff;' : 'align-self:flex-start;background:var(--bg);border:1px solid var(--line-strong);') + '">' + escapeHtml(m.body) + '<div style="font-family:var(--font-mono);font-size:9.5px;opacity:.7;margin-top:5px;">' + formatTime(m.created_at) + '</div></div>';
-      }).join('') : '<p class="empty-note" style="margin:auto;">Aucun message pour le moment. Écrivez le premier !</p>';
-      thread.scrollTop = thread.scrollHeight;
+
+  /* ---------------- Administratif ---------------- */
+  function loadInvoices(){
+    rpc('get_client_invoices', { p_token: token }).then(function(invoices){
+      var list = document.getElementById('invoicesList');
+      list.innerHTML = invoices.length ? invoices.map(function(inv){
+        return '<a class="invoice-row plaque" href="' + escapeHtml(inv.file_url) + '" target="_blank" rel="noopener">' +
+          '<span class="r-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3v13m0 0 4-4m-4 4-4-4M5 19h14"/></svg></span>' +
+          '<div><h3>' + escapeHtml(inv.label) + '</h3><div class="r-date">' + (inv.issued_at ? formatDate(inv.issued_at) : '') + '</div></div>' +
+          (inv.amount != null ? '<span class="r-amount">' + Number(inv.amount).toLocaleString('fr-FR', { minimumFractionDigits:2, maximumFractionDigits:2 }) + ' €</span>' : '') +
+        '</a>';
+      }).join('') : '<p class="empty-note">Aucune facture pour le moment.</p>';
     });
   }
-  document.getElementById('msgSend').addEventListener('click', function(){
-    var input = document.getElementById('msgInput');
-    var body = input.value.trim();
-    if(!body) return;
-    input.value = '';
-    rpc('send_client_message', { p_token: token, p_body: body }).then(loadMessages);
-  });
 
   /* ---------------- Reports ---------------- */
   var reportsCache = [];

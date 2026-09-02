@@ -289,6 +289,7 @@
     <section class="view-panel" data-view-panel="prospects" hidden>
       <div class="view-header">
         <div><span class="eyebrow">CRM</span><h1>Prospects</h1><p>Le pipeline, du premier contact au client signé.</p></div>
+        <button class="btn btn-accent btn-sm" id="addLeadBtn">+ Nouveau prospect</button>
       </div>
       <div class="kanban" id="kanban"></div>
     </section>
@@ -351,7 +352,7 @@
   function roadmapStageLabel(s){ return ROADMAP_STAGE_LABELS[s] || (s ? s.charAt(0).toUpperCase() + s.slice(1) : '—'); }
 
   var session = null;
-  var cache = { clients:[], projects:[], leads:[], stages:[], messages:[], roadmap:[], roadmapStages:[], reports:[] };
+  var cache = { clients:[], projects:[], leads:[], stages:[], messages:[], roadmap:[], roadmapStages:[], reports:[], invoices:[] };
 
   /* ---------------- Session ---------------- */
   function saveSession(s){ session = s; try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }catch(e){} }
@@ -473,7 +474,8 @@
       apiFetch('/rest/v1/messages?select=*&order=created_at.asc').then(function(r){ return r.json(); }),
       apiFetch('/rest/v1/roadmap_items?select=*&order=position.asc').then(function(r){ return r.json(); }),
       apiFetch('/rest/v1/roadmap_stages?select=*&order=position.asc').then(function(r){ return r.json(); }),
-      apiFetch('/rest/v1/reports?select=*&order=created_at.desc').then(function(r){ return r.json(); })
+      apiFetch('/rest/v1/reports?select=*&order=created_at.desc').then(function(r){ return r.json(); }),
+      apiFetch('/rest/v1/invoices?select=*&order=issued_at.desc.nullslast').then(function(r){ return r.json(); })
     ]).then(function(results){
       cache.clients = Array.isArray(results[0]) ? results[0] : [];
       cache.projects = Array.isArray(results[1]) ? results[1] : [];
@@ -483,6 +485,7 @@
       cache.roadmap = Array.isArray(results[5]) ? results[5] : [];
       cache.roadmapStages = Array.isArray(results[6]) ? results[6] : [];
       cache.reports = Array.isArray(results[7]) ? results[7] : [];
+      cache.invoices = Array.isArray(results[8]) ? results[8] : [];
       renderOverview();
       renderKanban();
       renderClients();
@@ -500,6 +503,7 @@
   function roadmapForClient(id){ return cache.roadmap.filter(function(r){ return r.client_id === id; }); }
   function roadmapStagesForClient(id){ return cache.roadmapStages.filter(function(s){ return s.client_id === id; }); }
   function reportsForClient(id){ return cache.reports.filter(function(r){ return r.client_id === id; }); }
+  function invoicesForClient(id){ return cache.invoices.filter(function(i){ return i.client_id === id; }); }
   function unreadCountForClient(id){ return messagesForClient(id).filter(function(m){ return m.sender === 'client' && !m.agency_read; }).length; }
 
   /* ---------------- Overview ---------------- */
@@ -719,6 +723,63 @@
     });
   }
 
+  function openLeadCreateModal(){
+    var sectorOptions = '<option value="">—</option>' + Object.keys(SECTOR_LABELS).map(function(k){ return '<option value="' + k + '">' + escapeHtml(SECTOR_LABELS[k]) + '</option>'; }).join('');
+    var teamOptions = '<option value="">—</option>' + Object.keys(TEAM_LABELS).map(function(k){ return '<option value="' + k + '">' + escapeHtml(TEAM_LABELS[k]) + '</option>'; }).join('');
+    var priorityOptions = '<option value="">—</option>' + Object.keys(PRIORITY_LABELS).map(function(k){ return '<option value="' + k + '">' + escapeHtml(PRIORITY_LABELS[k]) + '</option>'; }).join('');
+    var stages = cache.stages.slice().sort(function(a,b){ return a.position - b.position; });
+    var stageOptions = stages.map(function(s){ return '<option value="' + escapeHtml(s.name) + '">' + escapeHtml(stageLabel(s.name)) + '</option>'; }).join('');
+
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-panel plaque">' +
+        '<span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>' +
+        '<div class="modal-head"><h2 style="font-size:19px;">Nouveau prospect</h2><button class="modal-close" id="leadNewClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
+        '<div class="field"><label>Nom</label><input type="text" id="leadNewName"></div>' +
+        '<div class="field"><label>Entreprise</label><input type="text" id="leadNewCompany"></div>' +
+        '<div class="field"><label>Téléphone</label><input type="text" id="leadNewPhone"></div>' +
+        '<div class="onb-field-row"><div class="field"><label>Secteur</label><select id="leadNewSector">' + sectorOptions + '</select></div><div class="field"><label>Taille d\'équipe</label><select id="leadNewTeam">' + teamOptions + '</select></div></div>' +
+        '<div class="onb-field-row"><div class="field"><label>Priorité</label><select id="leadNewPriority">' + priorityOptions + '</select></div><div class="field"><label>Étape</label><select id="leadNewStage">' + stageOptions + '</select></div></div>' +
+        '<div class="field"><label>Note / réponse libre</label><textarea id="leadNewNote" placeholder="Contexte, besoin exprimé…"></textarea></div>' +
+        '<div class="detail-actions"><button class="btn btn-accent btn-sm" id="leadNewSave">Créer le prospect</button></div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e){ if(e.target === overlay) document.body.removeChild(overlay); });
+    overlay.querySelector('#leadNewClose').addEventListener('click', function(){ document.body.removeChild(overlay); });
+
+    overlay.querySelector('#leadNewSave').addEventListener('click', function(){
+      var name = overlay.querySelector('#leadNewName').value.trim();
+      var phone = overlay.querySelector('#leadNewPhone').value.trim();
+      if(!name){ showToast('Le nom est requis.'); return; }
+      if(!phone){ showToast('Le téléphone est requis.'); return; }
+      var payload = {
+        first_name: name,
+        company: overlay.querySelector('#leadNewCompany').value.trim(),
+        phone: phone,
+        source: 'manuel',
+        sector: overlay.querySelector('#leadNewSector').value || null,
+        team_size: overlay.querySelector('#leadNewTeam').value || null,
+        priority: overlay.querySelector('#leadNewPriority').value || null,
+        pain_point: overlay.querySelector('#leadNewNote').value.trim() || null,
+        stage: overlay.querySelector('#leadNewStage').value || (stages.length ? stages[0].name : 'nouveau')
+      };
+      apiFetch('/rest/v1/leads', { method:'POST', headers:{ 'Prefer':'return=representation' }, body: JSON.stringify(payload) })
+        .then(function(r){ return r.json().then(function(d){ return { ok:r.ok, d:d }; }); })
+        .then(function(res){
+          if(!res.ok) throw new Error();
+          cache.leads.unshift(res.d[0]);
+          renderKanban();
+          renderOverview();
+          document.body.removeChild(overlay);
+          showToast('Prospect créé.');
+        }).catch(function(){ showToast('Erreur : prospect non créé.'); });
+    });
+  }
+
+  var addLeadBtnEl = document.getElementById('addLeadBtn');
+  if(addLeadBtnEl) addLeadBtnEl.addEventListener('click', openLeadCreateModal);
+
   /* ---------------- Clients ---------------- */
   function renderClients(){
     var body = document.getElementById('clientsBody');
@@ -885,6 +946,7 @@
     var roadmapStages = roadmapStagesForClient(c.id);
     var messages = messagesForClient(c.id);
     var reports = reportsForClient(c.id);
+    var invoices = invoicesForClient(c.id);
     return (
       '<p class="lead" style="color:var(--ink-dim);font-size:13.5px;margin:0 0 18px;">' + escapeHtml(cfg.briefing || 'Aucun message de briefing défini.') + '</p>' +
       '<div class="modal-section" style="margin-top:0;padding-top:0;border-top:none;"><h4>Tâches du client</h4><ul class="task-list" id="espaceTasks" style="list-style:none;padding:0;margin:0;">' +
@@ -917,6 +979,17 @@
         (reports.length ? reports.slice(0,3).map(function(r){
           return '<div class="mini-row"><div><div class="m-title">' + escapeHtml(r.title) + '</div><div class="m-sub">' + formatDate(r.created_at) + (r.sent_at ? '' : ' · brouillon') + '</div></div></div>';
         }).join('') : '<p class="empty-note">Aucun rapport envoyé pour le moment.</p>') +
+      '</div>' +
+
+      '<div class="modal-section"><h4>Factures (' + invoices.length + ')</h4>' +
+        '<div id="invoiceMgmtList">' +
+        (invoices.length ? invoices.map(function(inv){
+          return '<div class="mini-row"><div><div class="m-title">' + escapeHtml(inv.label) + '</div><div class="m-sub">' + (inv.issued_at ? formatDate(inv.issued_at) : '—') + (inv.amount != null ? ' · ' + Number(inv.amount).toLocaleString('fr-FR', { minimumFractionDigits:2, maximumFractionDigits:2 }) + ' €' : '') + '</div></div><button class="btn btn-outline btn-sm" data-del-invoice="' + inv.id + '">Supprimer</button></div>';
+        }).join('') : '<p class="empty-note">Aucune facture pour le moment.</p>') +
+        '</div>' +
+        '<div class="onb-field-row" style="margin-top:14px;"><div class="field"><label>Libellé</label><input type="text" id="invNewLabel" placeholder="Facture n°..."></div><div class="field"><label>Montant (€)</label><input type="text" id="invNewAmount"></div></div>' +
+        '<div class="onb-field-row"><div class="field"><label>Date d\'émission</label><input type="date" id="invNewDate"></div><div class="field"><label>Lien du fichier</label><input type="text" id="invNewUrl" placeholder="https://..."></div></div>' +
+        '<button class="btn btn-accent btn-sm" id="invAddBtn">Ajouter la facture</button>' +
       '</div>' +
 
       '<div class="detail-actions"><a class="btn btn-outline btn-sm" href="' + escapeHtml(espaceLink) + '" target="_blank" rel="noopener">Voir l\'espace client ↗</a></div>'
@@ -985,6 +1058,40 @@
     if(openRoadmapBtn) openRoadmapBtn.addEventListener('click', function(){ openRoadmapKanban(c); });
     var openReportBtn = overlay.querySelector('#openReportBtn');
     if(openReportBtn) openReportBtn.addEventListener('click', function(){ openReportModal(c, overlay); });
+
+    function refreshEspaceTab(){
+      if(overlay.parentNode) document.body.removeChild(overlay);
+      openClientModal(c.id, 'espace');
+    }
+
+    var invAddBtn = overlay.querySelector('#invAddBtn');
+    if(invAddBtn) invAddBtn.addEventListener('click', function(){
+      var label = overlay.querySelector('#invNewLabel').value.trim();
+      var url = overlay.querySelector('#invNewUrl').value.trim();
+      if(!label || !url){ showToast('Libellé et lien du fichier sont requis.'); return; }
+      var amountRaw = overlay.querySelector('#invNewAmount').value.trim().replace(',', '.');
+      var amount = amountRaw ? parseFloat(amountRaw) : null;
+      var issuedAt = overlay.querySelector('#invNewDate').value || null;
+      apiFetch('/rest/v1/invoices', { method:'POST', headers:{ 'Prefer':'return=representation' }, body: JSON.stringify({ client_id:c.id, label:label, amount:amount, file_url:url, issued_at:issuedAt }) })
+        .then(function(r){ return r.json().then(function(d){ return { ok:r.ok, d:d }; }); })
+        .then(function(res){
+          if(!res.ok) throw new Error();
+          cache.invoices.unshift(res.d[0]);
+          showToast('Facture ajoutée.');
+          refreshEspaceTab();
+        }).catch(function(){ showToast('Erreur : facture non ajoutée.'); });
+    });
+    overlay.querySelectorAll('[data-del-invoice]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        if(!confirm('Supprimer cette facture ?')) return;
+        apiFetch('/rest/v1/invoices?id=eq.' + btn.dataset.delInvoice, { method:'DELETE' })
+          .then(function(r){ if(!r.ok) throw new Error();
+            cache.invoices = cache.invoices.filter(function(i){ return i.id !== btn.dataset.delInvoice; });
+            showToast('Facture supprimée.');
+            refreshEspaceTab();
+          }).catch(function(){ showToast('Erreur : suppression impossible.'); });
+      });
+    });
 
     var msgSendBtn = overlay.querySelector('#msgMgmtSend');
     if(msgSendBtn){
