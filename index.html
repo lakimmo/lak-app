@@ -202,6 +202,22 @@
   .client-card .cc-name{ font-weight:700; font-size:14px; }
   .client-card .cc-company{ font-size:12.5px; color:var(--ink-dim); }
 
+  .modal-panel.xwide{ max-width:1100px; }
+  .roadmap-card{ padding:13px; display:flex; flex-direction:column; gap:6px; cursor:pointer; }
+  .roadmap-card:hover{ border-color:var(--accent); }
+  .roadmap-card.dragging{ opacity:.4; }
+  .roadmap-card h4{ font-family:var(--font-body); font-weight:700; font-size:13.5px; margin:0; }
+  .roadmap-card .rc-video{ font-family:var(--font-mono); font-size:10px; color:var(--accent); display:flex; align-items:center; gap:5px; }
+  .roadmap-card .rc-video svg{ width:11px;height:11px; }
+  .add-card-btn{ border:1px dashed var(--line-strong); background:none; padding:10px; font-family:var(--font-mono); font-size:11px; color:var(--ink-dim); cursor:pointer; width:100%; }
+  .add-card-btn:hover{ border-color:var(--accent); color:var(--accent); }
+  .video-embed{ width:100%; aspect-ratio:16/9; border:none; margin-bottom:16px; background:#000; }
+  .report-task-pick{ display:flex; align-items:flex-start; gap:10px; padding:10px 0; border-top:1px solid var(--line); cursor:pointer; }
+  .report-task-pick:first-child{ border-top:none; }
+  .report-task-pick input{ margin-top:3px; }
+  .report-task-pick .rt-title{ font-weight:700; font-size:13.5px; }
+  .report-task-pick .rt-sub{ font-size:12px; color:var(--ink-dim); }
+
   .loading-note{ font-family:var(--font-mono); font-size:12px; color:var(--ink-faint); padding:20px 0; }
   .toast{ position:fixed; bottom:22px; right:22px; z-index:500; background:var(--ink); color:#fff; font-size:13px; padding:12px 18px; opacity:0; transform:translateY(8px); transition:opacity .3s ease, transform .3s ease; pointer-events:none; }
   .toast.show{ opacity:1; transform:translateY(0); }
@@ -322,13 +338,15 @@
   var ONBOARD_STAGE_LABELS = { intro:'Introduction', offer:'Offre & paiement', contract:'Contrat', space:'Espace actif' };
   var IS_LOCAL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
   var ONBOARDING_LINK_BASE = IS_LOCAL ? (location.origin + '/onboarding.html') : 'https://app.lak-agency.com/onboarding.html';
-  var ROADMAP_STATUS_LABELS = { a_faire:'À faire', en_cours:'En cours', termine:'Terminé' };
+  var ESPACE_LINK_BASE = IS_LOCAL ? (location.origin + '/espace.html') : 'https://app.lak-agency.com/espace.html';
+  var ROADMAP_STAGE_LABELS = { idee:'Idée', a_faire:'À faire', en_cours:'En cours', termine:'Terminé' };
   var PROJECT_STATUS_LABELS = { cadrage:'Cadrage', en_cours:'En cours', en_pause:'En pause', termine:'Terminé' };
   var TEAM_LABELS = { solo:'Solo', petite:'2-10 pers.', moyenne:'11-50 pers.', grande:'50+ pers.' };
   var PRIORITY_LABELS = { reponse:'SAV / support', leads:'Qualification leads', saisie:'Saisie admin', planning:'Planning', autre_tache:'Autre' };
+  function roadmapStageLabel(s){ return ROADMAP_STAGE_LABELS[s] || (s ? s.charAt(0).toUpperCase() + s.slice(1) : '—'); }
 
   var session = null;
-  var cache = { clients:[], projects:[], leads:[], stages:[], messages:[], roadmap:[] };
+  var cache = { clients:[], projects:[], leads:[], stages:[], messages:[], roadmap:[], roadmapStages:[], reports:[] };
 
   /* ---------------- Session ---------------- */
   function saveSession(s){ session = s; try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }catch(e){} }
@@ -448,7 +466,9 @@
       apiFetch('/rest/v1/leads?select=*&order=created_at.desc').then(function(r){ return r.json(); }),
       apiFetch('/rest/v1/pipeline_stages?select=*&order=position').then(function(r){ return r.json(); }),
       apiFetch('/rest/v1/messages?select=*&order=created_at.asc').then(function(r){ return r.json(); }),
-      apiFetch('/rest/v1/roadmap_items?select=*&order=position.asc').then(function(r){ return r.json(); })
+      apiFetch('/rest/v1/roadmap_items?select=*&order=position.asc').then(function(r){ return r.json(); }),
+      apiFetch('/rest/v1/roadmap_stages?select=*&order=position.asc').then(function(r){ return r.json(); }),
+      apiFetch('/rest/v1/reports?select=*&order=created_at.desc').then(function(r){ return r.json(); })
     ]).then(function(results){
       cache.clients = Array.isArray(results[0]) ? results[0] : [];
       cache.projects = Array.isArray(results[1]) ? results[1] : [];
@@ -456,6 +476,8 @@
       cache.stages = Array.isArray(results[3]) ? results[3] : [];
       cache.messages = Array.isArray(results[4]) ? results[4] : [];
       cache.roadmap = Array.isArray(results[5]) ? results[5] : [];
+      cache.roadmapStages = Array.isArray(results[6]) ? results[6] : [];
+      cache.reports = Array.isArray(results[7]) ? results[7] : [];
       renderOverview();
       renderKanban();
       renderClients();
@@ -471,6 +493,8 @@
   function projectsForClient(id){ return cache.projects.filter(function(p){ return p.client_id === id; }); }
   function messagesForClient(id){ return cache.messages.filter(function(m){ return m.client_id === id; }); }
   function roadmapForClient(id){ return cache.roadmap.filter(function(r){ return r.client_id === id; }); }
+  function roadmapStagesForClient(id){ return cache.roadmapStages.filter(function(s){ return s.client_id === id; }); }
+  function reportsForClient(id){ return cache.reports.filter(function(r){ return r.client_id === id; }); }
   function unreadCountForClient(id){ return messagesForClient(id).filter(function(m){ return m.sender === 'client' && !m.agency_read; }).length; }
 
   /* ---------------- Overview ---------------- */
@@ -811,7 +835,8 @@
   }
 
   function onboardingTabHtml(c, cfg, tasks, formTaskIdx){
-    var link = ONBOARDING_LINK_BASE + '?token=' + c.onboarding_token;
+    var onbLink = ONBOARDING_LINK_BASE + '?token=' + c.onboarding_token;
+    var espaceLink = ESPACE_LINK_BASE + '?token=' + c.onboarding_token;
     var offer = cfg.offer || {};
     return (
       '<div class="stage-stepper">' + ONBOARD_STAGES.map(function(s){
@@ -819,7 +844,8 @@
         var cls = idx === curIdx ? 'current' : (idx < curIdx ? 'past' : '');
         return '<div class="stage-step ' + cls + '">' + escapeHtml(ONBOARD_STAGE_LABELS[s]) + '</div>';
       }).join('') + '</div>' +
-      '<div class="link-box"><input type="text" readonly value="' + escapeHtml(link) + '" id="onbLinkInput"><button class="btn btn-outline btn-sm" id="onbCopyBtn">Copier</button></div>' +
+      '<div class="field"><label>Lien onboarding (funnel intro → offre → contrat)</label><div class="link-box"><input type="text" readonly value="' + escapeHtml(onbLink) + '" id="onbLinkInput"><button class="btn btn-outline btn-sm" id="onbCopyBtn">Copier</button></div></div>' +
+      '<div class="field"><label>Lien espace client (dashboard, roadmap, messages, RDV)</label><div class="link-box"><input type="text" readonly value="' + escapeHtml(espaceLink) + '" id="espaceLinkInput"><button class="btn btn-outline btn-sm" id="espaceCopyBtn">Copier</button></div></div>' +
       '<div class="field"><label>Forcer l\'étape (avancement manuel)</label><select id="onbStageSelect">' + ONBOARD_STAGES.map(function(s){ return '<option value="' + s + '"' + (s === c.onboarding_stage ? ' selected' : '') + '>' + escapeHtml(ONBOARD_STAGE_LABELS[s]) + '</option>'; }).join('') + '</select></div>' +
 
       '<div class="onb-subhead">Introduction</div>' +
@@ -849,9 +875,11 @@
 
   function espaceTabHtml(c, cfg, tasks){
     if(!c.onboarding_token) return '<p class="empty-note">Générez d\'abord un lien dans l\'onglet Onboarding.</p>';
-    var link = ONBOARDING_LINK_BASE + '?token=' + c.onboarding_token;
+    var espaceLink = ESPACE_LINK_BASE + '?token=' + c.onboarding_token;
     var roadmap = roadmapForClient(c.id);
+    var roadmapStages = roadmapStagesForClient(c.id);
     var messages = messagesForClient(c.id);
+    var reports = reportsForClient(c.id);
     return (
       '<p class="lead" style="color:var(--ink-dim);font-size:13.5px;margin:0 0 18px;">' + escapeHtml(cfg.briefing || 'Aucun message de briefing défini.') + '</p>' +
       '<div class="modal-section" style="margin-top:0;padding-top:0;border-top:none;"><h4>Tâches du client</h4><ul class="task-list" id="espaceTasks" style="list-style:none;padding:0;margin:0;">' +
@@ -860,23 +888,12 @@
         }).join('') +
       '</ul></div>' +
 
-      '<div class="modal-section"><h4>Roadmap</h4><div id="roadmapMgmtList">' +
-        (roadmap.length ? roadmap.map(function(r){
-          var cls = r.status === 'termine' ? 'badge-success' : r.status === 'en_cours' ? 'badge-accent' : 'badge-neutral';
-          return '<div class="mini-row" data-roadmap-row="' + r.id + '">' +
-            '<div><div class="m-title">' + escapeHtml(r.title) + '</div><div class="m-sub">' + (r.target_date ? formatDate(r.target_date) : '') + '</div></div>' +
-            '<select data-roadmap-status="' + r.id + '" style="font-family:var(--font-mono);font-size:11px;padding:5px 6px;border:1px solid var(--line-strong);">' +
-              Object.keys(ROADMAP_STATUS_LABELS).map(function(s){ return '<option value="' + s + '"' + (s === r.status ? ' selected' : '') + '>' + ROADMAP_STATUS_LABELS[s] + '</option>'; }).join('') +
-            '</select>' +
-            '<button class="lead-del" data-roadmap-del="' + r.id + '" title="Supprimer" style="margin-left:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>' +
-          '</div>';
-        }).join('') : '<p class="empty-note">Aucun objectif défini.</p>') +
-      '</div>' +
-      '<div class="onb-field-row" style="margin-top:14px;">' +
-        '<div class="field"><label>Nouvel objectif</label><input type="text" id="roadmapNewTitle" placeholder="Ex : Mise en production"></div>' +
-        '<div class="field"><label>Échéance (optionnel)</label><input type="date" id="roadmapNewDate"></div>' +
-      '</div>' +
-      '<button class="btn btn-outline btn-sm" id="roadmapAddBtn">Ajouter à la roadmap</button>' +
+      '<div class="modal-section"><h4>Roadmap</h4>' +
+        '<p style="font-size:13.5px;color:var(--ink-dim);margin:0 0 14px;">' + roadmap.length + ' tâche' + (roadmap.length !== 1 ? 's' : '') + ' · ' + roadmapStages.length + ' colonne' + (roadmapStages.length !== 1 ? 's' : '') + '</p>' +
+        '<div class="detail-actions" style="margin-top:0;">' +
+          '<button class="btn btn-outline btn-sm" id="openRoadmapBtn">Ouvrir la roadmap (plein écran)</button>' +
+          '<button class="btn btn-accent btn-sm" id="openReportBtn">Générer un rapport</button>' +
+        '</div>' +
       '</div>' +
 
       '<div class="modal-section"><h4>Messages' + (messages.filter(function(m){return m.sender==='client' && !m.agency_read;}).length ? ' <span class="badge badge-accent">nouveau</span>' : '') + '</h4>' +
@@ -891,7 +908,13 @@
         '</div>' +
       '</div>' +
 
-      '<div class="detail-actions"><a class="btn btn-outline btn-sm" href="' + escapeHtml(link) + '" target="_blank" rel="noopener">Voir l\'espace client ↗</a></div>'
+      '<div class="modal-section"><h4>Rapports envoyés (' + reports.length + ')</h4>' +
+        (reports.length ? reports.slice(0,3).map(function(r){
+          return '<div class="mini-row"><div><div class="m-title">' + escapeHtml(r.title) + '</div><div class="m-sub">' + formatDate(r.created_at) + (r.sent_at ? '' : ' · brouillon') + '</div></div></div>';
+        }).join('') : '<p class="empty-note">Aucun rapport envoyé pour le moment.</p>') +
+      '</div>' +
+
+      '<div class="detail-actions"><a class="btn btn-outline btn-sm" href="' + escapeHtml(espaceLink) + '" target="_blank" rel="noopener">Voir l\'espace client ↗</a></div>'
     );
   }
 
@@ -953,44 +976,10 @@
       });
     });
 
-    var addBtn = overlay.querySelector('#roadmapAddBtn');
-    if(addBtn){
-      addBtn.addEventListener('click', function(){
-        var title = overlay.querySelector('#roadmapNewTitle').value.trim();
-        var date = overlay.querySelector('#roadmapNewDate').value || null;
-        if(!title){ showToast('Le titre de l\'objectif est requis.'); return; }
-        var position = roadmapForClient(c.id).length;
-        apiFetch('/rest/v1/roadmap_items', { method:'POST', headers:{ 'Prefer':'return=representation' }, body: JSON.stringify({ client_id:c.id, title:title, target_date:date, status:'a_faire', position:position }) })
-          .then(function(r){ return r.json().then(function(d){ return { ok:r.ok, d:d }; }); })
-          .then(function(res){
-            if(!res.ok) throw new Error();
-            cache.roadmap.push(res.d[0]);
-            document.body.removeChild(overlay);
-            openClientModal(c.id, 'espace');
-          }).catch(function(){ showToast('Erreur : objectif non ajouté.'); });
-      });
-    }
-    overlay.querySelectorAll('[data-roadmap-status]').forEach(function(sel){
-      sel.addEventListener('change', function(){
-        apiFetch('/rest/v1/roadmap_items?id=eq.' + sel.dataset.roadmapStatus, { method:'PATCH', body: JSON.stringify({ status: sel.value }) })
-          .then(function(r){ if(!r.ok) throw new Error();
-            var item = cache.roadmap.find(function(x){ return x.id === sel.dataset.roadmapStatus; });
-            if(item) item.status = sel.value;
-            showToast('Roadmap mise à jour.');
-          }).catch(function(){ showToast('Erreur : statut non enregistré.'); });
-      });
-    });
-    overlay.querySelectorAll('[data-roadmap-del]').forEach(function(btn){
-      btn.addEventListener('click', function(){
-        if(!confirm('Supprimer cet objectif ?')) return;
-        apiFetch('/rest/v1/roadmap_items?id=eq.' + btn.dataset.roadmapDel, { method:'DELETE' })
-          .then(function(r){ if(!r.ok) throw new Error();
-            cache.roadmap = cache.roadmap.filter(function(x){ return x.id !== btn.dataset.roadmapDel; });
-            document.body.removeChild(overlay);
-            openClientModal(c.id, 'espace');
-          }).catch(function(){ showToast('Erreur : suppression impossible.'); });
-      });
-    });
+    var openRoadmapBtn = overlay.querySelector('#openRoadmapBtn');
+    if(openRoadmapBtn) openRoadmapBtn.addEventListener('click', function(){ openRoadmapKanban(c); });
+    var openReportBtn = overlay.querySelector('#openReportBtn');
+    if(openReportBtn) openReportBtn.addEventListener('click', function(){ openReportModal(c); });
 
     var msgSendBtn = overlay.querySelector('#msgMgmtSend');
     if(msgSendBtn){
@@ -1019,6 +1008,236 @@
         unread.forEach(function(m){ m.agency_read = true; });
         renderClients();
       }).catch(function(){ /* silencieux */ });
+  }
+
+  function videoEmbedUrl(link){
+    if(!link) return null;
+    var yt = link.match(/(?:youtu\.be\/|youtube\.com\/watch\?v=)([\w-]+)/);
+    if(yt) return 'https://www.youtube.com/embed/' + yt[1];
+    var loom = link.match(/loom\.com\/share\/([\w-]+)/);
+    if(loom) return 'https://www.loom.com/embed/' + loom[1];
+    var vimeo = link.match(/vimeo\.com\/(\d+)/);
+    if(vimeo) return 'https://player.vimeo.com/video/' + vimeo[1];
+    return null;
+  }
+
+  /* ---------------- Roadmap kanban (plein écran) ---------------- */
+  function openRoadmapKanban(client){
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-panel plaque xwide">' +
+        '<span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>' +
+        '<div class="modal-head"><div><span class="eyebrow">Roadmap</span><h2 style="margin-top:8px;">' + escapeHtml(client.name) + '</h2></div><button class="modal-close" id="rmClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
+        '<div class="kanban" id="rmKanban"></div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e){ if(e.target === overlay) document.body.removeChild(overlay); });
+    overlay.querySelector('#rmClose').addEventListener('click', function(){ document.body.removeChild(overlay); });
+
+    function renderRmKanban(){
+      var stages = roadmapStagesForClient(client.id);
+      var items = roadmapForClient(client.id);
+      var kanban = overlay.querySelector('#rmKanban');
+      kanban.innerHTML = stages.map(function(stage){
+        var colItems = items.filter(function(it){ return it.stage === stage.name; });
+        return '<div class="kanban-col" data-col-stage="' + escapeHtml(stage.name) + '">' +
+          '<div class="kanban-col-head"><span>' + escapeHtml(roadmapStageLabel(stage.name)) + '</span><span style="display:flex;align-items:center;gap:6px;"><span class="count">' + colItems.length + '</span><button class="kanban-col-del" data-del-stage="' + stage.id + '" title="Supprimer la colonne"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button></span></div>' +
+          colItems.map(function(it){
+            return '<div class="roadmap-card plaque" draggable="true" data-item-id="' + it.id + '"><h4>' + escapeHtml(it.title) + '</h4>' +
+              (it.video_link ? '<span class="rc-video"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7Z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>' + (it.video_watched ? 'Vidéo vue' : 'Vidéo à voir') + '</span>' : '') +
+            '</div>';
+          }).join('') +
+          '<button class="add-card-btn" data-add-task="' + escapeHtml(stage.name) + '">+ Ajouter une tâche</button>' +
+        '</div>';
+      }).join('') + '<div class="kanban-add-col"><button id="rmAddColBtn">+ Ajouter une colonne</button></div>';
+
+      kanban.querySelectorAll('[data-add-task]').forEach(function(btn){
+        btn.addEventListener('click', function(){ openTaskDetail(client, null, btn.dataset.addTask, renderRmKanban); });
+      });
+      kanban.querySelectorAll('.roadmap-card').forEach(function(card){
+        card.addEventListener('click', function(){ openTaskDetail(client, card.dataset.itemId, null, renderRmKanban); });
+        card.addEventListener('dragstart', function(e){ e.dataTransfer.setData('text/plain', card.dataset.itemId); card.classList.add('dragging'); });
+        card.addEventListener('dragend', function(){ card.classList.remove('dragging'); });
+      });
+      kanban.querySelectorAll('.kanban-col').forEach(function(col){
+        col.addEventListener('dragover', function(e){ e.preventDefault(); col.classList.add('drag-over'); });
+        col.addEventListener('dragleave', function(){ col.classList.remove('drag-over'); });
+        col.addEventListener('drop', function(e){
+          e.preventDefault(); col.classList.remove('drag-over');
+          var id = e.dataTransfer.getData('text/plain');
+          if(!id) return;
+          apiFetch('/rest/v1/roadmap_items?id=eq.' + id, { method:'PATCH', body: JSON.stringify({ stage: col.dataset.colStage }) })
+            .then(function(r){ if(!r.ok) throw new Error();
+              var item = cache.roadmap.find(function(x){ return x.id === id; });
+              if(item) item.stage = col.dataset.colStage;
+              renderRmKanban();
+            }).catch(function(){ showToast('Erreur : étape non enregistrée.'); });
+        });
+      });
+      kanban.querySelectorAll('[data-del-stage]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          var stageObj = cache.roadmapStages.find(function(s){ return s.id === btn.dataset.delStage; });
+          if(!stageObj) return;
+          var used = roadmapForClient(client.id).some(function(it){ return it.stage === stageObj.name; });
+          if(used){ showToast('Déplacez d\'abord les tâches de cette colonne.'); return; }
+          if(!confirm('Supprimer la colonne « ' + roadmapStageLabel(stageObj.name) + ' » ?')) return;
+          apiFetch('/rest/v1/roadmap_stages?id=eq.' + stageObj.id, { method:'DELETE' })
+            .then(function(r){ if(!r.ok) throw new Error();
+              cache.roadmapStages = cache.roadmapStages.filter(function(s){ return s.id !== stageObj.id; });
+              renderRmKanban();
+            }).catch(function(){ showToast('Erreur : colonne non supprimée.'); });
+        });
+      });
+      var addColBtn = overlay.querySelector('#rmAddColBtn');
+      if(addColBtn) addColBtn.addEventListener('click', function(){
+        var name = prompt('Nom de la nouvelle colonne :');
+        if(!name) return;
+        var position = roadmapStagesForClient(client.id).length;
+        apiFetch('/rest/v1/roadmap_stages', { method:'POST', headers:{ 'Prefer':'return=representation' }, body: JSON.stringify({ client_id:client.id, name:name, position:position }) })
+          .then(function(r){ return r.json().then(function(d){ return { ok:r.ok, d:d }; }); })
+          .then(function(res){ if(!res.ok) throw new Error(); cache.roadmapStages.push(res.d[0]); renderRmKanban(); })
+          .catch(function(){ showToast('Erreur : colonne non créée.'); });
+      });
+    }
+
+    renderRmKanban();
+  }
+
+  function openTaskDetail(client, itemId, newStage, onDone){
+    var item = itemId ? cache.roadmap.find(function(x){ return x.id === itemId; }) : { title:'', description:'', video_link:'', video_watched:false, stage:newStage };
+    var embedUrl = videoEmbedUrl(item.video_link);
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-panel plaque">' +
+        '<span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>' +
+        '<div class="modal-head"><h2 style="font-size:19px;">' + (itemId ? 'Modifier la tâche' : 'Nouvelle tâche') + '</h2><button class="modal-close" id="tdClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
+        (embedUrl ? '<iframe class="video-embed" src="' + embedUrl + '" allowfullscreen></iframe>' : '') +
+        '<div class="field"><label>Titre</label><input type="text" id="tdTitle" value="' + escapeHtml(item.title) + '"></div>' +
+        '<div class="field"><label>Description</label><textarea id="tdDesc">' + escapeHtml(item.description || '') + '</textarea></div>' +
+        '<div class="field"><label>Lien vidéo (facultatif)</label><input type="text" id="tdVideo" placeholder="https://..." value="' + escapeHtml(item.video_link || '') + '"></div>' +
+        (item.video_link ? '<label style="display:flex;align-items:center;gap:8px;font-size:13.5px;margin-bottom:16px;cursor:pointer;"><input type="checkbox" id="tdWatched" ' + (item.video_watched ? 'checked' : '') + '> Vidéo visionnée</label>' : '') +
+        '<div class="detail-actions">' +
+          '<button class="btn btn-accent btn-sm" id="tdSave">Enregistrer</button>' +
+          (itemId ? '<button class="btn btn-outline btn-sm" id="tdDelete">Supprimer</button>' : '') +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e){ if(e.target === overlay) document.body.removeChild(overlay); });
+    overlay.querySelector('#tdClose').addEventListener('click', function(){ document.body.removeChild(overlay); });
+
+    overlay.querySelector('#tdSave').addEventListener('click', function(){
+      var title = overlay.querySelector('#tdTitle').value.trim();
+      if(!title){ showToast('Le titre est requis.'); return; }
+      var description = overlay.querySelector('#tdDesc').value;
+      var videoLink = overlay.querySelector('#tdVideo').value.trim();
+      var watchedEl = overlay.querySelector('#tdWatched');
+      var payload = { title:title, description:description, video_link: videoLink || null };
+      if(watchedEl) payload.video_watched = watchedEl.checked;
+
+      if(itemId){
+        apiFetch('/rest/v1/roadmap_items?id=eq.' + itemId, { method:'PATCH', body: JSON.stringify(payload) })
+          .then(function(r){ if(!r.ok) throw new Error();
+            Object.assign(item, payload);
+            document.body.removeChild(overlay);
+            if(onDone) onDone();
+          }).catch(function(){ showToast('Erreur : tâche non enregistrée.'); });
+      } else {
+        var position = cache.roadmap.filter(function(x){ return x.client_id === client.id && x.stage === newStage; }).length;
+        apiFetch('/rest/v1/roadmap_items', { method:'POST', headers:{ 'Prefer':'return=representation' }, body: JSON.stringify(Object.assign({ client_id:client.id, stage:newStage, position:position }, payload)) })
+          .then(function(r){ return r.json().then(function(d){ return { ok:r.ok, d:d }; }); })
+          .then(function(res){ if(!res.ok) throw new Error();
+            cache.roadmap.push(res.d[0]);
+            document.body.removeChild(overlay);
+            if(onDone) onDone();
+          }).catch(function(){ showToast('Erreur : tâche non créée.'); });
+      }
+    });
+    var delBtn = overlay.querySelector('#tdDelete');
+    if(delBtn) delBtn.addEventListener('click', function(){
+      if(!confirm('Supprimer cette tâche ?')) return;
+      apiFetch('/rest/v1/roadmap_items?id=eq.' + itemId, { method:'DELETE' })
+        .then(function(r){ if(!r.ok) throw new Error();
+          cache.roadmap = cache.roadmap.filter(function(x){ return x.id !== itemId; });
+          document.body.removeChild(overlay);
+          if(onDone) onDone();
+        }).catch(function(){ showToast('Erreur : suppression impossible.'); });
+    });
+  }
+
+  /* ---------------- Génération de rapport (IA) ---------------- */
+  function openReportModal(client){
+    var items = roadmapForClient(client.id);
+    var stages = roadmapStagesForClient(client.id).slice().sort(function(a,b){ return a.position - b.position; });
+    var lastStageName = stages.length ? stages[stages.length - 1].name : null;
+
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-panel plaque xwide">' +
+        '<span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>' +
+        '<div class="modal-head"><h2 style="font-size:19px;">Générer un rapport — ' + escapeHtml(client.name) + '</h2><button class="modal-close" id="repClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
+        '<div id="repStepPick">' +
+          '<p style="font-size:13.5px;color:var(--ink-dim);margin:0 0 6px;">Choisissez les tâches à inclure (la dernière colonne est pré-sélectionnée).</p>' +
+          '<div id="repTaskList">' +
+            (items.length ? items.map(function(it){
+              var checked = it.stage === lastStageName;
+              return '<label class="report-task-pick"><input type="checkbox" data-rep-task="' + it.id + '"' + (checked ? ' checked' : '') + '><span><span class="rt-title">' + escapeHtml(it.title) + '</span><span class="rt-sub"> — ' + escapeHtml(roadmapStageLabel(it.stage)) + (it.video_link ? (it.video_watched ? ' · vidéo vue' : ' · vidéo non vue') : '') + '</span></span></label>';
+            }).join('') : '<p class="empty-note">Aucune tâche dans la roadmap.</p>') +
+          '</div>' +
+          '<div class="detail-actions"><button class="btn btn-accent btn-sm" id="repGenerateBtn">Générer avec l\'IA</button></div>' +
+        '</div>' +
+        '<div id="repStepDraft" hidden>' +
+          '<div class="field"><label>Rapport (modifiable)</label><textarea id="repContent" style="min-height:320px;"></textarea></div>' +
+          '<div class="detail-actions"><button class="btn btn-accent btn-sm" id="repSendBtn">Envoyer au client</button><button class="btn btn-outline btn-sm" id="repBackBtn">Retour</button></div>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e){ if(e.target === overlay) document.body.removeChild(overlay); });
+    overlay.querySelector('#repClose').addEventListener('click', function(){ document.body.removeChild(overlay); });
+
+    overlay.querySelector('#repGenerateBtn').addEventListener('click', function(){
+      var selected = Array.prototype.slice.call(overlay.querySelectorAll('[data-rep-task]:checked')).map(function(cb){
+        return items.find(function(it){ return it.id === cb.dataset.repTask; });
+      }).filter(Boolean);
+      if(!selected.length){ showToast('Sélectionnez au moins une tâche.'); return; }
+      var btn = overlay.querySelector('#repGenerateBtn');
+      btn.disabled = true; btn.textContent = 'Génération en cours…';
+      apiFetch('/functions/v1/generate-report', {
+        method:'POST',
+        body: JSON.stringify({
+          client_name: client.name,
+          client_company: client.company,
+          tasks: selected.map(function(it){ return { title:it.title, description:it.description, video_link:it.video_link, video_watched:it.video_watched }; })
+        })
+      }).then(function(r){ return r.json().then(function(d){ return { ok:r.ok, d:d }; }); })
+        .then(function(res){
+          btn.disabled = false; btn.textContent = 'Générer avec l\'IA';
+          if(!res.ok || res.d.error){ showToast(res.d.error || 'Erreur de génération.'); return; }
+          overlay.querySelector('#repContent').value = res.d.report;
+          overlay.querySelector('#repStepPick').hidden = true;
+          overlay.querySelector('#repStepDraft').hidden = false;
+        }).catch(function(){ btn.disabled = false; btn.textContent = 'Générer avec l\'IA'; showToast('Erreur réseau.'); });
+    });
+
+    overlay.querySelector('#repBackBtn').addEventListener('click', function(){
+      overlay.querySelector('#repStepDraft').hidden = true;
+      overlay.querySelector('#repStepPick').hidden = false;
+    });
+
+    overlay.querySelector('#repSendBtn').addEventListener('click', function(){
+      var content = overlay.querySelector('#repContent').value.trim();
+      if(!content){ showToast('Le rapport est vide.'); return; }
+      apiFetch('/rest/v1/reports', { method:'POST', headers:{ 'Prefer':'return=representation' }, body: JSON.stringify({ client_id:client.id, title:'Rapport de suivi', content:content, sent_at: new Date().toISOString() }) })
+        .then(function(r){ return r.json().then(function(d){ return { ok:r.ok, d:d }; }); })
+        .then(function(res){
+          if(!res.ok) throw new Error();
+          cache.reports.unshift(res.d[0]);
+          document.body.removeChild(overlay);
+          showToast('Rapport envoyé au client.');
+        }).catch(function(){ showToast('Erreur : rapport non envoyé.'); });
+    });
   }
 
   /* ---------------- Onboarding kanban ---------------- */
