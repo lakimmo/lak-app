@@ -129,10 +129,26 @@
   .detail-actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; }
 
   /* ============ REPORTS ============ */
-  .report-card{ padding:24px; margin-bottom:18px; }
-  .report-card .r-date{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); margin-bottom:8px; display:block; }
-  .report-card h3{ font-size:17px; margin-bottom:12px; }
-  .report-card p{ color:var(--ink-dim); font-size:14px; white-space:pre-wrap; line-height:1.6; margin:0; }
+  .report-row{ display:flex; align-items:center; gap:16px; padding:18px 20px; margin-bottom:12px; cursor:pointer; }
+  .report-row:hover{ border-color:var(--accent); }
+  .report-row .r-icon{ width:38px;height:38px; border:1px solid var(--line-strong); display:flex; align-items:center; justify-content:center; flex:none; color:var(--accent); }
+  .report-row .r-icon svg{ width:18px;height:18px; }
+  .report-row h3{ font-size:15.5px; margin:0; }
+  .report-row .r-date{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-faint); margin-top:3px; }
+  .report-row .r-arrow{ margin-left:auto; color:var(--ink-faint); flex:none; }
+  .report-row .r-arrow svg{ width:16px;height:16px; }
+
+  .report-doc{ max-width:680px; }
+  .report-doc-header{ padding-bottom:20px; margin-bottom:22px; border-bottom:1px solid var(--line-strong); }
+  .report-doc-header .r-date{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-dim); }
+  .report-doc-header h2{ font-size:24px; margin-top:8px; }
+  .report-doc-body p{ color:var(--ink); font-size:15px; line-height:1.7; margin:0 0 16px; }
+  .report-doc-tasks{ margin-top:26px; padding-top:22px; border-top:1px solid var(--line); }
+  .report-doc-tasks h4{ font-family:var(--font-mono); font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:16px; }
+  .report-task{ padding:18px 0; border-top:1px solid var(--line); }
+  .report-task:first-of-type{ border-top:none; padding-top:0; }
+  .report-task h5{ font-family:var(--font-body); font-weight:800; font-size:15px; margin:0 0 6px; }
+  .report-task p{ color:var(--ink-dim); font-size:13.5px; margin:0 0 12px; }
 
   /* ============ CAL ============ */
   .cal-embed-space{ background:var(--bg-panel); border:1px solid var(--ink); overflow:hidden; height:640px; padding:4px; }
@@ -461,13 +477,51 @@
   });
 
   /* ---------------- Reports ---------------- */
+  var reportsCache = [];
   function loadReports(){
     rpc('get_client_reports', { p_token: token }).then(function(reports){
+      reportsCache = reports;
       var list = document.getElementById('reportsList');
       list.innerHTML = reports.length ? reports.map(function(r){
-        return '<div class="report-card plaque"><span class="tick tl"></span><span class="tick br"></span><span class="r-date">' + formatTime(r.created_at) + '</span><h3>' + escapeHtml(r.title) + '</h3><p>' + escapeHtml(r.content) + '</p></div>';
+        return '<div class="report-row plaque" data-report-id="' + r.id + '">' +
+          '<span class="r-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M9 12h6M9 16h6M9 8h2"/></svg></span>' +
+          '<div><h3>' + escapeHtml(r.title) + '</h3><div class="r-date">Reçu le ' + formatTime(r.created_at) + '</div></div>' +
+          '<span class="r-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span>' +
+        '</div>';
       }).join('') : '<p class="empty-note">Aucun rapport pour le moment.</p>';
+      list.querySelectorAll('[data-report-id]').forEach(function(row){
+        row.addEventListener('click', function(){ openReportDoc(row.dataset.reportId); });
+      });
     });
+  }
+
+  function openReportDoc(id){
+    var r = reportsCache.find(function(x){ return x.id === id; });
+    if(!r) return;
+    var tasks = Array.isArray(r.tasks_snapshot) ? r.tasks_snapshot : [];
+    var paragraphs = (r.content || '').split(/\n\s*\n/).filter(Boolean);
+
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-panel plaque report-doc">' +
+        '<span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>' +
+        '<div class="modal-head"><div></div><button class="modal-close" id="repDocClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
+        '<div class="report-doc-header"><span class="r-date">LAK · Rapport de suivi</span><h2>' + escapeHtml(r.title) + '</h2></div>' +
+        '<div class="report-doc-body">' + paragraphs.map(function(p){ return '<p>' + escapeHtml(p) + '</p>'; }).join('') + '</div>' +
+        (tasks.length ? '<div class="report-doc-tasks"><h4>Livrables (' + tasks.length + ')</h4>' +
+          tasks.map(function(t){
+            var embedUrl = videoEmbedUrl(t.video_link);
+            return '<div class="report-task"><h5>' + escapeHtml(t.title) + '</h5>' +
+              (t.description ? '<p>' + escapeHtml(t.description) + '</p>' : '') +
+              (embedUrl ? '<iframe class="video-embed" src="' + embedUrl + '" allowfullscreen></iframe>' : '') +
+            '</div>';
+          }).join('') +
+        '</div>' : '') +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e){ if(e.target === overlay) document.body.removeChild(overlay); });
+    overlay.querySelector('#repDocClose').addEventListener('click', function(){ document.body.removeChild(overlay); });
   }
 
   load();

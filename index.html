@@ -979,7 +979,7 @@
     var openRoadmapBtn = overlay.querySelector('#openRoadmapBtn');
     if(openRoadmapBtn) openRoadmapBtn.addEventListener('click', function(){ openRoadmapKanban(c); });
     var openReportBtn = overlay.querySelector('#openReportBtn');
-    if(openReportBtn) openReportBtn.addEventListener('click', function(){ openReportModal(c); });
+    if(openReportBtn) openReportBtn.addEventListener('click', function(){ openReportModal(c, overlay); });
 
     var msgSendBtn = overlay.querySelector('#msgMgmtSend');
     if(msgSendBtn){
@@ -1167,10 +1167,11 @@
   }
 
   /* ---------------- Génération de rapport (IA) ---------------- */
-  function openReportModal(client){
+  function openReportModal(client, parentOverlay){
     var items = roadmapForClient(client.id);
     var stages = roadmapStagesForClient(client.id).slice().sort(function(a,b){ return a.position - b.position; });
     var lastStageName = stages.length ? stages[stages.length - 1].name : null;
+    var today = new Date().toISOString().slice(0,10);
 
     var overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
@@ -1179,6 +1180,7 @@
         '<span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>' +
         '<div class="modal-head"><h2 style="font-size:19px;">Générer un rapport — ' + escapeHtml(client.name) + '</h2><button class="modal-close" id="repClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
         '<div id="repStepPick">' +
+          '<div class="onb-field-row" style="margin-bottom:18px;"><div class="field"><label>Période — du</label><input type="date" id="repDateStart"></div><div class="field"><label>Au</label><input type="date" id="repDateEnd" value="' + today + '"></div></div>' +
           '<p style="font-size:13.5px;color:var(--ink-dim);margin:0 0 6px;">Choisissez les tâches à inclure (la dernière colonne est pré-sélectionnée).</p>' +
           '<div id="repTaskList">' +
             (items.length ? items.map(function(it){
@@ -1189,7 +1191,7 @@
           '<div class="detail-actions"><button class="btn btn-accent btn-sm" id="repGenerateBtn">Générer avec l\'IA</button></div>' +
         '</div>' +
         '<div id="repStepDraft" hidden>' +
-          '<div class="field"><label>Rapport (modifiable)</label><textarea id="repContent" style="min-height:320px;"></textarea></div>' +
+          '<div class="field"><label>Rapport (modifiable)</label><textarea id="repContent" style="min-height:280px;"></textarea></div>' +
           '<div class="detail-actions"><button class="btn btn-accent btn-sm" id="repSendBtn">Envoyer au client</button><button class="btn btn-outline btn-sm" id="repBackBtn">Retour</button></div>' +
         '</div>' +
       '</div>';
@@ -1197,11 +1199,14 @@
     overlay.addEventListener('click', function(e){ if(e.target === overlay) document.body.removeChild(overlay); });
     overlay.querySelector('#repClose').addEventListener('click', function(){ document.body.removeChild(overlay); });
 
+    var snapshot = [];
+
     overlay.querySelector('#repGenerateBtn').addEventListener('click', function(){
       var selected = Array.prototype.slice.call(overlay.querySelectorAll('[data-rep-task]:checked')).map(function(cb){
         return items.find(function(it){ return it.id === cb.dataset.repTask; });
       }).filter(Boolean);
       if(!selected.length){ showToast('Sélectionnez au moins une tâche.'); return; }
+      snapshot = selected.map(function(it){ return { title:it.title, description:it.description, video_link:it.video_link || null }; });
       var btn = overlay.querySelector('#repGenerateBtn');
       btn.disabled = true; btn.textContent = 'Génération en cours…';
       apiFetch('/functions/v1/generate-report', {
@@ -1229,13 +1234,23 @@
     overlay.querySelector('#repSendBtn').addEventListener('click', function(){
       var content = overlay.querySelector('#repContent').value.trim();
       if(!content){ showToast('Le rapport est vide.'); return; }
-      apiFetch('/rest/v1/reports', { method:'POST', headers:{ 'Prefer':'return=representation' }, body: JSON.stringify({ client_id:client.id, title:'Rapport de suivi', content:content, sent_at: new Date().toISOString() }) })
+      var start = overlay.querySelector('#repDateStart').value || null;
+      var end = overlay.querySelector('#repDateEnd').value || null;
+      var title = (start && end) ? ('Rapport du ' + formatDate(start) + ' au ' + formatDate(end)) : 'Rapport de suivi';
+      apiFetch('/rest/v1/reports', {
+        method:'POST', headers:{ 'Prefer':'return=representation' },
+        body: JSON.stringify({ client_id:client.id, title:title, content:content, period_start:start, period_end:end, tasks_snapshot:snapshot, sent_at: new Date().toISOString() })
+      })
         .then(function(r){ return r.json().then(function(d){ return { ok:r.ok, d:d }; }); })
         .then(function(res){
           if(!res.ok) throw new Error();
           cache.reports.unshift(res.d[0]);
           document.body.removeChild(overlay);
           showToast('Rapport envoyé au client.');
+          if(parentOverlay && parentOverlay.parentNode){
+            document.body.removeChild(parentOverlay);
+            openClientModal(client.id, 'espace');
+          }
         }).catch(function(){ showToast('Erreur : rapport non envoyé.'); });
     });
   }
