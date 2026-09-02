@@ -535,12 +535,25 @@
     rpc('get_client_invoices', { p_token: token }).then(function(invoices){
       var list = document.getElementById('invoicesList');
       list.innerHTML = invoices.length ? invoices.map(function(inv){
-        return '<a class="invoice-row plaque" href="' + escapeHtml(inv.file_url) + '" target="_blank" rel="noopener">' +
+        return '<div class="invoice-row plaque" data-invoice-id="' + inv.id + '" style="cursor:pointer;">' +
           '<span class="r-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3v13m0 0 4-4m-4 4-4-4M5 19h14"/></svg></span>' +
-          '<div><h3>' + escapeHtml(inv.label) + '</h3><div class="r-date">' + (inv.issued_at ? formatDate(inv.issued_at) : '') + '</div></div>' +
-          (inv.amount != null ? '<span class="r-amount">' + Number(inv.amount).toLocaleString('fr-FR', { minimumFractionDigits:2, maximumFractionDigits:2 }) + ' €</span>' : '') +
-        '</a>';
+          '<div><h3>Facture' + (inv.issued_at ? ' du ' + formatDate(inv.issued_at) : '') + '</h3></div>' +
+          (inv.amount != null ? '<span class="r-amount">' + Number(inv.amount).toLocaleString('fr-FR', { minimumFractionDigits:2, maximumFractionDigits:2 }) + ' € HT</span>' : '') +
+        '</div>';
       }).join('') : '<p class="empty-note">Aucune facture pour le moment.</p>';
+      list.querySelectorAll('[data-invoice-id]').forEach(function(row){
+        row.addEventListener('click', function(){ openInvoice(row.dataset.invoiceId); });
+      });
+    });
+  }
+
+  function openInvoice(invoiceId){
+    fetch(SUPABASE_URL + '/functions/v1/get-invoice-url', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'apikey':SUPABASE_ANON_KEY },
+      body: JSON.stringify({ token:token, invoice_id:invoiceId })
+    }).then(function(r){ return r.json(); }).then(function(d){
+      if(d.url) window.open(d.url, '_blank');
     });
   }
 

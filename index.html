@@ -984,11 +984,11 @@
       '<div class="modal-section"><h4>Factures (' + invoices.length + ')</h4>' +
         '<div id="invoiceMgmtList">' +
         (invoices.length ? invoices.map(function(inv){
-          return '<div class="mini-row"><div><div class="m-title">' + escapeHtml(inv.label) + '</div><div class="m-sub">' + (inv.issued_at ? formatDate(inv.issued_at) : '—') + (inv.amount != null ? ' · ' + Number(inv.amount).toLocaleString('fr-FR', { minimumFractionDigits:2, maximumFractionDigits:2 }) + ' €' : '') + '</div></div><button class="btn btn-outline btn-sm" data-del-invoice="' + inv.id + '">Supprimer</button></div>';
+          return '<div class="mini-row"><div><div class="m-title">Facture' + (inv.issued_at ? ' du ' + formatDate(inv.issued_at) : '') + '</div><div class="m-sub">' + (inv.amount != null ? Number(inv.amount).toLocaleString('fr-FR', { minimumFractionDigits:2, maximumFractionDigits:2 }) + ' € HT' : '—') + '</div></div><button class="btn btn-outline btn-sm" data-del-invoice="' + inv.id + '">Supprimer</button></div>';
         }).join('') : '<p class="empty-note">Aucune facture pour le moment.</p>') +
         '</div>' +
-        '<div class="onb-field-row" style="margin-top:14px;"><div class="field"><label>Libellé</label><input type="text" id="invNewLabel" placeholder="Facture n°..."></div><div class="field"><label>Montant (€)</label><input type="text" id="invNewAmount"></div></div>' +
-        '<div class="onb-field-row"><div class="field"><label>Date d\'émission</label><input type="date" id="invNewDate"></div><div class="field"><label>Lien du fichier</label><input type="text" id="invNewUrl" placeholder="https://..."></div></div>' +
+        '<div class="onb-field-row" style="margin-top:14px;"><div class="field"><label>Date d\'émission</label><input type="date" id="invNewDate"></div><div class="field"><label>Montant (€ HT)</label><input type="text" id="invNewAmount"></div></div>' +
+        '<div class="field"><label>Fichier de la facture</label><input type="file" id="invNewFile" accept=".pdf,.png,.jpg,.jpeg"></div>' +
         '<button class="btn btn-accent btn-sm" id="invAddBtn">Ajouter la facture</button>' +
       '</div>' +
 
@@ -1066,20 +1066,33 @@
 
     var invAddBtn = overlay.querySelector('#invAddBtn');
     if(invAddBtn) invAddBtn.addEventListener('click', function(){
-      var label = overlay.querySelector('#invNewLabel').value.trim();
-      var url = overlay.querySelector('#invNewUrl').value.trim();
-      if(!label || !url){ showToast('Libellé et lien du fichier sont requis.'); return; }
+      var fileInput = overlay.querySelector('#invNewFile');
+      var file = fileInput.files[0];
+      if(!file){ showToast('Sélectionnez un fichier.'); return; }
       var amountRaw = overlay.querySelector('#invNewAmount').value.trim().replace(',', '.');
       var amount = amountRaw ? parseFloat(amountRaw) : null;
       var issuedAt = overlay.querySelector('#invNewDate').value || null;
-      apiFetch('/rest/v1/invoices', { method:'POST', headers:{ 'Prefer':'return=representation' }, body: JSON.stringify({ client_id:c.id, label:label, amount:amount, file_url:url, issued_at:issuedAt }) })
-        .then(function(r){ return r.json().then(function(d){ return { ok:r.ok, d:d }; }); })
+      var safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+      var path = c.id + '/' + Date.now() + '-' + safeName;
+
+      invAddBtn.disabled = true; invAddBtn.textContent = 'Envoi en cours…';
+      apiFetch('/storage/v1/object/invoices/' + path, {
+        method:'POST',
+        headers:{ 'Content-Type': file.type || 'application/octet-stream' },
+        body: file
+      }).then(function(r){
+        if(!r.ok) throw new Error('upload failed');
+        return apiFetch('/rest/v1/invoices', { method:'POST', headers:{ 'Prefer':'return=representation' }, body: JSON.stringify({ client_id:c.id, amount:amount, issued_at:issuedAt, file_path:path }) });
+      }).then(function(r){ return r.json().then(function(d){ return { ok:r.ok, d:d }; }); })
         .then(function(res){
           if(!res.ok) throw new Error();
           cache.invoices.unshift(res.d[0]);
           showToast('Facture ajoutée.');
           refreshEspaceTab();
-        }).catch(function(){ showToast('Erreur : facture non ajoutée.'); });
+        }).catch(function(){
+          invAddBtn.disabled = false; invAddBtn.textContent = 'Ajouter la facture';
+          showToast('Erreur : facture non ajoutée.');
+        });
     });
     overlay.querySelectorAll('[data-del-invoice]').forEach(function(btn){
       btn.addEventListener('click', function(){
