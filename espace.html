@@ -1,5 +1,8 @@
 <meta charset="UTF-8">
 <title>LAK Espace Client</title>
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" href="assets/favicon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
@@ -58,7 +61,8 @@
   /* ============ APP SHELL ============ */
   .shell{ display:flex; min-height:100vh; }
   .sidebar{ width:230px; flex:none; background:var(--bg-sidebar); border-right:1px solid var(--line-strong); padding:26px 20px; display:flex; flex-direction:column; gap:26px; position:sticky; top:0; height:100vh; }
-  .logo{ font-family:var(--font-display); font-weight:800; font-size:19px; }
+  .logo{ display:inline-flex; }
+  .logo img{ height:19px; width:auto; display:block; }
   .logo em{ font-style:normal; color:var(--accent); }
   .side-client{ font-size:13px; color:var(--ink-dim); margin-top:-14px; }
   .side-nav{ display:flex; flex-direction:column; gap:4px; flex:1; }
@@ -173,8 +177,7 @@
   .video-lightbox-close:hover{ border-color:#fff; }
   .video-lightbox-close svg{ width:16px; height:16px; display:block; margin:auto; }
   .report-doc-footer{ display:flex; align-items:center; justify-content:space-between; margin-top:32px; padding-top:20px; border-top:1px solid var(--line); }
-  .report-doc-footer .rdf-mark{ font-family:var(--font-display); font-weight:800; font-size:14px; }
-  .report-doc-footer .rdf-mark em{ font-style:normal; color:var(--accent); }
+  .report-doc-footer .rdf-mark img{ height:13px; width:auto; display:block; }
   .report-doc-footer .rdf-note{ font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint); }
 
   /* ============ CAL ============ */
@@ -205,7 +208,7 @@
   <div class="shell">
     <aside class="sidebar">
       <div>
-        <div class="logo">L<em>A</em>K</div>
+        <div class="logo"><img src="assets/logo-wordmark.png" alt="LAK"></div>
         <div class="side-client" id="sideClientName"></div>
       </div>
       <nav class="side-nav">
@@ -563,7 +566,7 @@
             }).join('') +
             '</div>' +
           '</div>' : '') +
-          '<div class="report-doc-footer"><div class="rdf-mark">L<em>A</em>K</div><div class="rdf-note">Rapport généré le ' + formatDate(r.created_at) + '</div></div>' +
+          '<div class="report-doc-footer"><div class="rdf-mark"><img src="assets/logo-wordmark.png" alt="LAK"></div><div class="rdf-note">Rapport généré le ' + formatDate(r.created_at) + '</div></div>' +
         '</div>' +
       '</div>';
     document.body.appendChild(overlay);

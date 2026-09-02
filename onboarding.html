@@ -1,5 +1,8 @@
 <meta charset="UTF-8">
 <title>LAK Onboarding</title>
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" href="assets/favicon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
@@ -70,9 +73,12 @@
   .error-plaque{ text-align:center; padding:60px 30px; }
   .error-plaque p{ color:var(--ink-dim); margin-top:10px; }
   .loading-state{ text-align:center; padding:80px 20px; font-family:var(--font-mono); font-size:13px; color:var(--ink-faint); }
+  .onb-logo{ display:flex; justify-content:center; margin-bottom:32px; }
+  .onb-logo img{ height:20px; width:auto; display:block; }
 </style>
 
 <div class="wrap">
+  <div class="onb-logo"><img src="assets/logo-wordmark.png" alt="LAK"></div>
   <div id="loadingState" class="loading-state">Chargement de votre espace…</div>
 
   <div id="errorState" class="plaque error-plaque" hidden>

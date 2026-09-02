@@ -1,5 +1,8 @@
 <meta charset="UTF-8">
 <title>LAK Espace Agence</title>
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" href="assets/favicon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
@@ -55,7 +58,8 @@
   .auth-screen{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; position:relative; }
   .auth-grid-bg{ position:absolute; inset:0; background-image:linear-gradient(to right, var(--line-strong) 1px, transparent 1px), linear-gradient(to bottom, var(--line-strong) 1px, transparent 1px); background-size:56px 56px; opacity:.16; }
   .auth-plaque{ position:relative; z-index:1; width:100%; max-width:400px; padding:44px 36px; }
-  .auth-logo{ font-family:var(--font-display); font-weight:800; font-size:22px; margin-bottom:22px; }
+  .auth-logo{ margin-bottom:22px; }
+  .auth-logo img{ height:26px; width:auto; display:block; }
   .auth-logo em{ font-style:normal; color:var(--accent); }
   .auth-plaque h1{ font-size:26px; margin-top:14px; }
   .auth-plaque > p{ color:var(--ink-dim); font-size:14px; margin:10px 0 26px; }
@@ -66,7 +70,8 @@
   /* ============ APP SHELL ============ */
   #appShell{ display:flex; min-height:100vh; }
   .sidebar{ width:240px; flex:none; background:var(--bg-sidebar); border-right:1px solid var(--line-strong); display:flex; flex-direction:column; padding:26px 20px; position:sticky; top:0; height:100vh; }
-  .sidebar .logo{ font-family:var(--font-display); font-weight:800; font-size:20px; text-decoration:none; margin-bottom:34px; display:inline-block; }
+  .sidebar .logo{ text-decoration:none; margin-bottom:34px; display:inline-flex; }
+  .sidebar .logo img{ height:20px; width:auto; display:block; }
   .sidebar .logo em{ font-style:normal; color:var(--accent); }
   .side-nav{ display:flex; flex-direction:column; gap:4px; flex:1; }
   .side-link{ display:flex; align-items:center; gap:11px; text-align:left; background:none; border:none; padding:11px 12px; font-size:14px; font-weight:600; color:var(--ink-dim); cursor:pointer; border-left:2px solid transparent; }
@@ -227,7 +232,7 @@
   <div class="auth-grid-bg"></div>
   <div class="auth-plaque plaque">
     <span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>
-    <div class="auth-logo">L<em>A</em>K</div>
+    <div class="auth-logo"><img src="assets/logo-wordmark.png" alt="LAK"></div>
     <span class="eyebrow">Espace client</span>
     <h1>Connexion</h1>
     <p>Accédez à votre espace de gestion.</p>
@@ -243,7 +248,7 @@
 
 <div id="appShell" hidden>
   <aside class="sidebar">
-    <a class="logo" href="#">L<em>A</em>K</a>
+    <a class="logo" href="#"><img src="assets/logo-wordmark.png" alt="LAK"></a>
     <nav class="side-nav">
       <button class="side-link active" data-view="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="8" height="8"/><rect x="13" y="3" width="8" height="5"/><rect x="13" y="12" width="8" height="9"/><rect x="3" y="15" width="8" height="6"/></svg> Vue d'ensemble</button>
       <button class="side-link" data-view="prospects"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 5h18l-7 8v6l-4 2v-8L3 5Z"/></svg> Prospects</button>
