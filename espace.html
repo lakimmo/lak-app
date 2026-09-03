@@ -422,7 +422,7 @@
     var referralBadge = document.getElementById('referralBadge');
     referralBadge.hidden = !(referral.title || referral.description);
     if(!referralBadge.hidden){
-      document.getElementById('referralBadgeTitle').textContent = referral.title || '';
+      document.getElementById('referralBadgeTitle').textContent = '🔥 ' + (referral.title || '');
       referralBadge.onclick = function(){ openReferralModal(referral); };
     }
 
@@ -682,7 +682,7 @@
     overlay.className = 'modal-overlay';
     overlay.innerHTML =
       '<div class="modal-panel plaque" style="max-width:440px;">' +
-        '<div class="modal-head"><h2 style="font-size:19px;">' + escapeHtml(referral.title || '') + '</h2><button class="modal-close" id="referralModalClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
+        '<div class="modal-head"><h2 style="font-size:19px;">🔥 ' + escapeHtml(referral.title || '') + '</h2><button class="modal-close" id="referralModalClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
         '<p style="font-size:14.5px;color:var(--ink-dim);line-height:1.6;margin:0;white-space:pre-wrap;">' + escapeHtml(referral.description || '') + '</p>' +
       '</div>';
     document.body.appendChild(overlay);
