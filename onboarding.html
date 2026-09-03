@@ -1,4 +1,5 @@
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LAK Onboarding</title>
 <link rel="icon" href="assets/favicon.ico" sizes="any">
 <link rel="icon" href="assets/favicon-192.png" type="image/png">
@@ -75,6 +76,13 @@
   .loading-state{ text-align:center; padding:80px 20px; font-family:var(--font-mono); font-size:13px; color:var(--ink-faint); }
   .onb-logo{ display:flex; justify-content:center; margin-bottom:32px; }
   .onb-logo img{ height:20px; width:auto; display:block; }
+
+  /* ============ MOBILE REFINEMENTS ============ */
+  @media (max-width:480px){
+    .wrap{ padding:40px 16px 40px; }
+    .stage-nav{ flex-wrap:wrap; }
+    .stage-nav .btn{ flex:1 1 auto; }
+  }
 </style>
 
 <div class="wrap">

@@ -1,4 +1,5 @@
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LAK Espace Client</title>
 <link rel="icon" href="assets/favicon.ico" sizes="any">
 <link rel="icon" href="assets/favicon-192.png" type="image/png">
@@ -213,6 +214,18 @@
   .cal-embed-space > div{ width:100%; height:100%; }
 
   .empty-note{ color:var(--ink-faint); font-size:13px; padding:10px 0; }
+
+  /* ============ MOBILE REFINEMENTS ============ */
+  @media (max-width:600px){
+    .date-field-row{ grid-template-columns:1fr !important; }
+    .modal-overlay{ padding:16px 12px; }
+    .modal-panel{ padding:22px 18px; }
+    .page-head.hero-head{ padding:20px; }
+    .kanban{ grid-auto-columns:84vw; }
+    .cal-embed-space{ height:560px; }
+    .report-doc-inner{ padding:26px 20px 24px; }
+    .video-lightbox{ padding:16px; }
+  }
 </style>
 
 <div id="loadingState" class="loading-state">Chargement de votre espace…</div>
@@ -491,7 +504,7 @@
         '<div class="field"><label>Description</label><textarea id="taskDesc">' + escapeHtml(item.description || '') + '</textarea></div>' +
         '<div class="field"><label>Lien vidéo (facultatif)</label><input type="text" id="taskVideo" placeholder="https://..." value="' + escapeHtml(item.video_link || '') + '"></div>' +
         (item.video_link ? '<label style="display:flex;align-items:center;gap:8px;font-size:13.5px;margin-bottom:16px;cursor:pointer;"><input type="checkbox" id="taskWatched" ' + (item.video_watched ? 'checked' : '') + '> Vidéo visionnée</label>' : '') +
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">' +
+        '<div class="date-field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">' +
           '<div class="field"><label>Deadline</label><input type="date" id="taskDeadline" value="' + (item.deadline || '') + '"></div>' +
           '<div class="field"><label>Date de réalisation</label><input type="date" id="taskCompleted" value="' + (item.completed_at || '') + '"></div>' +
         '</div>' +

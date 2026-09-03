@@ -1,4 +1,5 @@
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LAK Espace Agence</title>
 <link rel="icon" href="assets/favicon.ico" sizes="any">
 <link rel="icon" href="assets/favicon-192.png" type="image/png">
@@ -240,6 +241,19 @@
   .loading-note{ font-family:var(--font-mono); font-size:12px; color:var(--ink-faint); padding:20px 0; }
   .toast{ position:fixed; bottom:22px; right:22px; z-index:500; background:var(--ink); color:var(--bg-panel); border-radius:var(--radius-sm); box-shadow:var(--shadow-pop); font-size:13px; padding:12px 18px; opacity:0; transform:translateY(8px); transition:opacity .3s ease, transform .3s ease; pointer-events:none; }
   .toast.show{ opacity:1; transform:translateY(0); }
+
+  /* ============ MOBILE REFINEMENTS ============ */
+  @media (max-width:600px){
+    .auth-plaque{ padding:32px 22px; }
+    .detail-grid, .contact-grid, .onb-field-row, .funnel-fields-row{ grid-template-columns:1fr !important; }
+    .modal-overlay{ padding:16px 12px; }
+    .modal-panel{ padding:22px 18px; }
+    .view-header.hero-head{ padding:20px; }
+    .kanban{ grid-auto-columns:84vw; }
+    .stage-stepper{ flex-wrap:wrap; }
+    .stage-stepper .stage-step{ flex:1 1 40%; }
+    .toast{ left:12px; right:12px; bottom:12px; text-align:center; }
+  }
 </style>
 
 <div class="auth-screen" id="loginView">
