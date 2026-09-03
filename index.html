@@ -7,20 +7,33 @@
   @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
   :root{
-    --bg:#F1EBDD; --bg-panel:#FFFFFF; --bg-sidebar:#FAF6EC;
+    --bg:#FAF7F1; --bg-panel:#FFFFFF; --bg-hover:#F5F0E7;
     --ink:#171310; --ink-dim:#6E6454; --ink-faint:#B7AB93;
-    --accent:#FF6B1A; --accent-soft:#FFE0C4;
-    --line:#D9CDB2; --line-strong:#171310;
+    --accent:#FF6B1A; --accent-soft:#FFE7D2; --accent-ink:#B84E10;
+    --line:#ECE4D4; --line-strong:#D9CDB2; --line-soft:#F2EBDD;
     --danger:#B3271A; --danger-soft:#FBE2DE;
-    --success:#2E7D46; --success-soft:#DFF0E2;
+    --success:#2E7D46; --success-soft:#E3F3E6;
+    --shadow-card:0 1px 2px rgba(23,19,16,.04), 0 14px 28px -20px rgba(23,19,16,.14);
+    --shadow-pop:0 2px 6px rgba(23,19,16,.06), 0 24px 40px -20px rgba(23,19,16,.18);
     --font-display:'Bricolage Grotesque','Arial Black',sans-serif;
     --font-body:'Instrument Sans',-apple-system,'Segoe UI',sans-serif;
     --font-mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+    --radius-lg:18px; --radius-md:12px; --radius-sm:9px;
     --ease:cubic-bezier(.16,.84,.44,1);
+  }
+  [data-theme="dark"]{
+    --bg:#171310; --bg-panel:#201B16; --bg-hover:#282019;
+    --ink:#F4EEE3; --ink-dim:#B7AB93; --ink-faint:#6E6454;
+    --accent:#FF7A2E; --accent-soft:#3A2416; --accent-ink:#FFB183;
+    --line:#332B22; --line-strong:#4A4033; --line-soft:#2A241C;
+    --danger:#E06A5C; --danger-soft:#3A211D;
+    --success:#4FAE6C; --success-soft:#1B2E20;
+    --shadow-card:0 1px 2px rgba(0,0,0,.2), 0 14px 28px -20px rgba(0,0,0,.5);
+    --shadow-pop:0 2px 6px rgba(0,0,0,.3), 0 24px 40px -20px rgba(0,0,0,.6);
   }
   *{box-sizing:border-box;}
   [hidden]{ display:none !important; }
-  body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--font-body); -webkit-font-smoothing:antialiased; }
+  body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--font-body); -webkit-font-smoothing:antialiased; transition:background .25s ease, color .25s ease; }
   a{ color:inherit; }
   ::selection{ background:var(--accent); color:#fff; }
   h1,h2,h3{ font-family:var(--font-display); font-weight:800; line-height:1.08; letter-spacing:-0.01em; margin:0; }
@@ -30,18 +43,14 @@
   .eyebrow{ font-family:var(--font-mono); font-size:11.5px; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); display:inline-flex; align-items:center; gap:8px; }
   .eyebrow::before{ content:""; width:6px;height:6px; background:var(--accent); }
 
-  .tick{ position:absolute; width:14px; height:14px; pointer-events:none; }
-  .tick::before, .tick::after{ content:""; position:absolute; background:var(--ink); }
-  .tick::before{ width:14px; height:1.5px; top:6px; }
-  .tick::after{ width:1.5px; height:14px; left:6px; }
-  .tick.tl{ top:-7px; left:-7px; } .tick.tr{ top:-7px; right:-7px; }
-  .tick.bl{ bottom:-7px; left:-7px; } .tick.br{ bottom:-7px; right:-7px; }
-  .plaque{ position:relative; background:var(--bg-panel); border:1px solid var(--ink); }
+  .plaque{ position:relative; background:var(--bg-panel); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow-card); }
 
-  .btn{ appearance:none; -webkit-appearance:none; font-family:var(--font-body); font-weight:700; font-size:14px; display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:11px 20px; border-radius:2px; border:1px solid transparent; text-decoration:none; cursor:pointer; white-space:nowrap; transition:transform .2s var(--ease), background .2s ease, color .2s ease, border-color .2s ease; }
+  .grid-bg{ position:absolute; inset:0; background-image:linear-gradient(to right, var(--line) 1px, transparent 1px), linear-gradient(to bottom, var(--line) 1px, transparent 1px); background-size:40px 40px; opacity:.6; pointer-events:none; mask-image:linear-gradient(to bottom, #000, transparent 85%); -webkit-mask-image:linear-gradient(to bottom, #000, transparent 85%); }
+
+  .btn{ appearance:none; -webkit-appearance:none; font-family:var(--font-body); font-weight:700; font-size:14px; display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 18px; border-radius:999px; border:1px solid transparent; text-decoration:none; cursor:pointer; white-space:nowrap; transition:transform .15s var(--ease), background .2s ease, color .2s ease, border-color .2s ease; }
   .btn:active{ transform:scale(.97); }
   .btn-accent{ background:var(--accent); color:#fff; }
-  .btn-accent:hover{ background:#e85f13; }
+  .btn-accent:hover{ background:var(--accent-ink); }
   .btn-outline{ background:transparent; color:var(--ink); border-color:var(--line-strong); }
   .btn-outline:hover{ border-color:var(--accent); color:var(--accent); }
   .btn-sm{ padding:8px 14px; font-size:12.5px; }
@@ -49,56 +58,61 @@
 
   .field{ display:flex; flex-direction:column; gap:7px; margin-bottom:16px; }
   .field label{ font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-dim); }
-  .field input, .field textarea, .field select{ font-family:var(--font-body); font-size:14.5px; color:var(--ink); background:var(--bg-panel); border:1px solid var(--line-strong); padding:11px 12px; width:100%; appearance:none; -webkit-appearance:none; }
+  .field input, .field textarea, .field select{ font-family:var(--font-body); font-size:14.5px; color:var(--ink); background:var(--bg-panel); border:1px solid var(--line-strong); border-radius:var(--radius-sm); padding:11px 12px; width:100%; appearance:none; -webkit-appearance:none; }
   .field select{ background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%23171310" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>'); background-repeat:no-repeat; background-position:right 10px center; background-size:15px; padding-right:34px; }
+  [data-theme="dark"] .field select{ background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%23F4EEE3" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>'); }
   .field input:focus, .field textarea:focus, .field select:focus{ outline:none; border-color:var(--accent); }
   .field textarea{ min-height:90px; resize:vertical; }
 
   /* ============ LOGIN ============ */
   .auth-screen{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; position:relative; }
-  .auth-grid-bg{ position:absolute; inset:0; background-image:linear-gradient(to right, var(--line-strong) 1px, transparent 1px), linear-gradient(to bottom, var(--line-strong) 1px, transparent 1px); background-size:56px 56px; opacity:.16; }
+  .auth-grid-bg{ position:absolute; inset:0; background-image:linear-gradient(to right, var(--line) 1px, transparent 1px), linear-gradient(to bottom, var(--line) 1px, transparent 1px); background-size:48px 48px; opacity:.7; }
   .auth-plaque{ position:relative; z-index:1; width:100%; max-width:400px; padding:44px 36px; }
   .auth-logo{ margin-bottom:22px; }
   .auth-logo img{ height:26px; width:auto; display:block; }
   .auth-logo em{ font-style:normal; color:var(--accent); }
   .auth-plaque h1{ font-size:26px; margin-top:14px; }
   .auth-plaque > p{ color:var(--ink-dim); font-size:14px; margin:10px 0 26px; }
-  .auth-error{ font-family:var(--font-mono); font-size:12px; color:var(--danger); background:var(--danger-soft); border:1px solid var(--danger); padding:10px 12px; margin-bottom:16px; }
+  .auth-error{ font-family:var(--font-mono); font-size:12px; color:var(--danger); background:var(--danger-soft); border:1px solid var(--danger); border-radius:var(--radius-sm); padding:10px 12px; margin-bottom:16px; }
   .auth-submit{ width:100%; padding:13px; }
   .auth-hint{ margin-top:20px; font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); text-align:center; }
 
   /* ============ APP SHELL ============ */
-  #appShell{ display:flex; min-height:100vh; }
-  .sidebar{ width:240px; flex:none; background:var(--bg-sidebar); border-right:1px solid var(--line-strong); display:flex; flex-direction:column; padding:26px 20px; position:sticky; top:0; height:100vh; }
-  .sidebar .logo{ text-decoration:none; margin-bottom:34px; display:inline-flex; }
+  #appShell{ display:flex; min-height:100vh; background:var(--bg-panel); }
+  .sidebar{ width:248px; flex:none; background:var(--bg-panel); display:flex; flex-direction:column; padding:22px 16px; position:sticky; top:0; height:100vh; }
+  .sidebar .logo{ text-decoration:none; margin-bottom:28px; display:inline-flex; padding:4px 8px; }
   .sidebar .logo img{ height:20px; width:auto; display:block; }
-  .sidebar .logo em{ font-style:normal; color:var(--accent); }
-  .side-nav{ display:flex; flex-direction:column; gap:4px; flex:1; }
-  .side-link{ display:flex; align-items:center; gap:11px; text-align:left; background:none; border:none; padding:11px 12px; font-size:14px; font-weight:600; color:var(--ink-dim); cursor:pointer; border-left:2px solid transparent; }
+  .side-nav{ display:flex; flex-direction:column; gap:2px; flex:1; }
+  .side-link{ display:flex; align-items:center; gap:11px; text-align:left; background:none; border:none; border-radius:var(--radius-sm); padding:9px 12px; font-size:13.5px; font-weight:600; color:var(--ink-dim); cursor:pointer; }
   .side-link svg{ width:17px;height:17px; flex:none; }
-  .side-link:hover{ color:var(--ink); }
-  .side-link.active{ color:var(--ink); background:var(--bg-panel); border-left-color:var(--accent); }
-  .sidebar-foot{ border-top:1px solid var(--line); padding-top:16px; display:flex; flex-direction:column; gap:12px; }
+  .side-link:hover{ background:var(--bg-hover); color:var(--ink); }
+  .side-link.active{ color:var(--accent-ink); background:var(--accent-soft); }
+  .sidebar-foot{ border-top:1px solid var(--line); padding-top:16px; margin-top:16px; display:flex; flex-direction:column; gap:12px; }
   .user-chip{ display:flex; align-items:center; gap:10px; }
-  .user-chip .avatar{ width:32px;height:32px; border-radius:50%; background:var(--ink); color:#fff; display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:12px; font-weight:600; flex:none; }
+  .user-chip .avatar{ width:32px;height:32px; border-radius:50%; background:var(--ink); color:var(--bg-panel); display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:12px; font-weight:600; flex:none; }
   .user-chip .u-email{ font-size:12.5px; color:var(--ink-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .side-logout{ background:none; border:1px solid var(--line-strong); padding:9px; font-size:12px; font-weight:600; color:var(--ink-dim); cursor:pointer; }
+  .side-logout{ background:none; border:1px solid var(--line-strong); border-radius:var(--radius-sm); padding:9px; font-size:12px; font-weight:600; color:var(--ink-dim); cursor:pointer; }
   .side-logout:hover{ border-color:var(--accent); color:var(--accent); }
   @media (max-width:880px){
     #appShell{ flex-direction:column; }
-    .sidebar{ width:auto; height:auto; position:relative; flex-direction:row; align-items:center; padding:14px 18px; gap:20px; overflow-x:auto; }
+    .sidebar{ width:auto; height:auto; position:relative; flex-direction:row; align-items:center; padding:14px 18px; gap:20px; overflow-x:auto; border-right:none; border-bottom:1px solid var(--line); }
     .sidebar .logo{ margin-bottom:0; flex:none; }
     .side-nav{ flex-direction:row; flex:none; }
-    .side-link{ border-left:none; border-bottom:2px solid transparent; white-space:nowrap; }
-    .side-link.active{ border-bottom-color:var(--accent); }
-    .sidebar-foot{ border-top:none; flex-direction:row; margin-left:auto; padding-top:0; }
+    .sidebar-foot{ border-top:none; flex-direction:row; margin-left:auto; margin-top:0; padding-top:0; }
     .user-chip .u-email{ display:none; }
   }
 
-  .app-main{ flex:1; padding:clamp(24px,4vw,48px); min-width:0; }
+  .app-main{ flex:1; min-width:0; margin:14px 14px 14px 0; min-height:calc(100vh - 28px); background-color:var(--bg); background-image:linear-gradient(to right, color-mix(in srgb, var(--line-strong) 25%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, var(--line-strong) 25%, transparent) 1px, transparent 1px); background-size:40px 40px; border:1px solid var(--line); border-radius:var(--radius-lg); box-shadow:var(--shadow-card); padding:clamp(24px,4vw,48px); }
+  @media (max-width:880px){ .app-main{ margin:0; border-radius:0; border:none; box-shadow:none; min-height:auto; } }
+  .topbar{ display:flex; justify-content:flex-end; margin-bottom:14px; }
+  .theme-toggle{ width:34px; height:34px; border-radius:50%; border:1px solid var(--line); background:var(--bg-panel); color:var(--ink-dim); display:flex; align-items:center; justify-content:center; cursor:pointer; flex:none; }
+  .theme-toggle:hover{ border-color:var(--accent); color:var(--accent); }
+  .theme-toggle svg{ width:16px;height:16px; }
   .view-header{ display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:28px; }
   .view-header h1{ font-size:clamp(24px,3vw,32px); }
   .view-header p{ color:var(--ink-dim); font-size:13.5px; margin-top:6px; }
+  .view-header.hero-head{ position:relative; overflow:hidden; border-radius:var(--radius-lg); padding:26px 28px; background:var(--bg-panel); border:1px solid var(--line); box-shadow:var(--shadow-card); align-items:center; }
+  .view-header.hero-head > *{ position:relative; z-index:1; }
 
   /* ============ STAT TILES ============ */
   .stat-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:18px; margin-bottom:32px; }
@@ -119,7 +133,7 @@
   .empty-note{ color:var(--ink-faint); font-size:13px; padding:16px 0; font-style:normal; }
 
   /* ============ BADGES ============ */
-  .badge{ display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.05em; text-transform:uppercase; padding:4px 9px; border:1px solid currentColor; }
+  .badge{ display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.05em; text-transform:uppercase; padding:4px 9px; border-radius:999px; border:1px solid currentColor; }
   .badge-neutral{ color:var(--ink-dim); }
   .badge-accent{ color:var(--accent); }
   .badge-success{ color:var(--success); background:var(--success-soft); border-color:var(--success); }
@@ -144,12 +158,12 @@
   .lead-card .l-meta span{ font-family:var(--font-mono); font-size:9.5px; text-transform:uppercase; letter-spacing:0.04em; color:var(--ink-faint); border:1px solid var(--line); padding:3px 7px; }
   .lead-card .l-pain{ font-size:12px; color:var(--ink-dim); font-style:italic; }
   .lead-card-actions{ display:flex; gap:8px; align-items:center; margin-top:4px; }
-  .lead-card-actions select{ flex:1; font-family:var(--font-mono); font-size:11px; padding:7px 8px; border:1px solid var(--line-strong); background:var(--bg-panel); }
-  .lead-del{ background:none; border:1px solid var(--line-strong); width:30px;height:30px; flex:none; cursor:pointer; color:var(--ink-dim); }
+  .lead-card-actions select{ flex:1; font-family:var(--font-mono); font-size:11px; padding:7px 8px; border:1px solid var(--line-strong); border-radius:var(--radius-sm); background:var(--bg-panel); }
+  .lead-del{ background:none; border:1px solid var(--line-strong); border-radius:50%; width:30px;height:30px; flex:none; cursor:pointer; color:var(--ink-dim); }
   .lead-del:hover{ border-color:var(--danger); color:var(--danger); }
   .lead-del svg{ width:13px;height:13px; }
   .kanban-add-col{ display:flex; align-items:flex-start; padding-top:32px; }
-  .kanban-add-col button{ width:100%; border:1px dashed var(--line-strong); background:none; padding:13px; font-family:var(--font-mono); font-size:12px; color:var(--ink-dim); cursor:pointer; }
+  .kanban-add-col button{ width:100%; border:1px dashed var(--line-strong); border-radius:var(--radius-sm); background:none; padding:13px; font-family:var(--font-mono); font-size:12px; color:var(--ink-dim); cursor:pointer; }
   .kanban-add-col button:hover{ border-color:var(--accent); color:var(--accent); }
   .detail-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px 20px; font-size:13.5px; margin-bottom:6px; }
   .detail-grid div span{ display:block; }
@@ -163,7 +177,7 @@
   .data-table td{ padding:13px 14px; border-bottom:1px solid var(--line); vertical-align:middle; }
   .data-table tbody tr{ cursor:pointer; transition:background .15s ease; }
   .data-table tbody tr:hover{ background:var(--bg); }
-  .data-table td select{ font-family:var(--font-mono); font-size:11px; padding:6px 8px; border:1px solid var(--line-strong); background:var(--bg-panel); }
+  .data-table td select{ font-family:var(--font-mono); font-size:11px; padding:6px 8px; border:1px solid var(--line-strong); border-radius:var(--radius-sm); background:var(--bg-panel); }
   .cell-name{ font-weight:700; }
   .cell-sub{ color:var(--ink-dim); font-size:12px; }
 
@@ -171,13 +185,13 @@
   .modal-overlay{ position:fixed; inset:0; background:rgba(23,19,16,.45); z-index:400; display:flex; align-items:flex-start; justify-content:center; padding:40px 20px; overflow-y:auto; }
   .modal-panel{ width:100%; max-width:640px; padding:32px 30px; margin-top:20px; }
   .modal-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:18px; }
-  .modal-close{ background:none; border:1px solid var(--line-strong); width:32px;height:32px; cursor:pointer; flex:none; color:var(--ink-dim); }
+  .modal-close{ background:none; border:1px solid var(--line-strong); border-radius:50%; width:32px;height:32px; cursor:pointer; flex:none; color:var(--ink-dim); }
   .modal-close:hover{ border-color:var(--accent); color:var(--accent); }
   .modal-close svg{ width:14px;height:14px; }
   .modal-section{ margin-top:24px; padding-top:20px; border-top:1px solid var(--line); }
   .modal-section h4{ font-family:var(--font-mono); font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:14px; }
   .onboard-item{ display:flex; align-items:center; gap:10px; padding:8px 0; font-size:14px; cursor:pointer; }
-  .onboard-item .check{ width:18px;height:18px; border:1px solid var(--line-strong); flex:none; display:flex; align-items:center; justify-content:center; }
+  .onboard-item .check{ width:18px;height:18px; border-radius:5px; border:1px solid var(--line-strong); flex:none; display:flex; align-items:center; justify-content:center; }
   .onboard-item.done .check{ background:var(--accent); border-color:var(--accent); color:#fff; }
   .onboard-item.done span.oi-label{ text-decoration:line-through; color:var(--ink-faint); }
   .onboard-item .check svg{ width:11px;height:11px; }
@@ -193,11 +207,11 @@
   .modal-tab.active{ color:var(--ink); border-bottom-color:var(--accent); }
   .tab-panel{ }
   .stage-stepper{ display:flex; gap:8px; margin-bottom:24px; }
-  .stage-step{ flex:1; text-align:center; padding:9px 6px; font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.04em; border:1px solid var(--line-strong); color:var(--ink-faint); }
+  .stage-step{ flex:1; text-align:center; padding:9px 6px; font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.04em; border:1px solid var(--line-strong); border-radius:var(--radius-sm); color:var(--ink-faint); }
   .stage-step.current{ background:var(--accent); border-color:var(--accent); color:#fff; }
   .stage-step.past{ color:var(--ink); background:var(--bg); }
   .link-box{ display:flex; gap:8px; align-items:center; margin-bottom:22px; }
-  .link-box input{ flex:1; font-family:var(--font-mono); font-size:12px; padding:10px 12px; border:1px solid var(--line-strong); background:var(--bg); color:var(--ink-dim); }
+  .link-box input{ flex:1; font-family:var(--font-mono); font-size:12px; padding:10px 12px; border:1px solid var(--line-strong); border-radius:var(--radius-sm); background:var(--bg); color:var(--ink-dim); }
   .onb-field-row{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   .onb-subhead{ font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.07em; color:var(--ink-faint); margin:20px 0 10px; padding-top:16px; border-top:1px solid var(--line); }
   .onb-subhead:first-of-type{ border-top:none; padding-top:0; }
@@ -214,7 +228,7 @@
   .roadmap-card h4{ font-family:var(--font-body); font-weight:700; font-size:13.5px; margin:0; }
   .roadmap-card .rc-video{ font-family:var(--font-mono); font-size:10px; color:var(--accent); display:flex; align-items:center; gap:5px; }
   .roadmap-card .rc-video svg{ width:11px;height:11px; }
-  .add-card-btn{ border:1px dashed var(--line-strong); background:none; padding:10px; font-family:var(--font-mono); font-size:11px; color:var(--ink-dim); cursor:pointer; width:100%; }
+  .add-card-btn{ border:1px dashed var(--line-strong); border-radius:var(--radius-sm); background:none; padding:10px; font-family:var(--font-mono); font-size:11px; color:var(--ink-dim); cursor:pointer; width:100%; }
   .add-card-btn:hover{ border-color:var(--accent); color:var(--accent); }
   .video-embed{ width:100%; aspect-ratio:16/9; border:none; margin-bottom:16px; background:#000; }
   .report-task-pick{ display:flex; align-items:flex-start; gap:10px; padding:10px 0; border-top:1px solid var(--line); cursor:pointer; }
@@ -224,14 +238,13 @@
   .report-task-pick .rt-sub{ font-size:12px; color:var(--ink-dim); }
 
   .loading-note{ font-family:var(--font-mono); font-size:12px; color:var(--ink-faint); padding:20px 0; }
-  .toast{ position:fixed; bottom:22px; right:22px; z-index:500; background:var(--ink); color:#fff; font-size:13px; padding:12px 18px; opacity:0; transform:translateY(8px); transition:opacity .3s ease, transform .3s ease; pointer-events:none; }
+  .toast{ position:fixed; bottom:22px; right:22px; z-index:500; background:var(--ink); color:var(--bg-panel); border-radius:var(--radius-sm); box-shadow:var(--shadow-pop); font-size:13px; padding:12px 18px; opacity:0; transform:translateY(8px); transition:opacity .3s ease, transform .3s ease; pointer-events:none; }
   .toast.show{ opacity:1; transform:translateY(0); }
 </style>
 
 <div class="auth-screen" id="loginView">
   <div class="auth-grid-bg"></div>
   <div class="auth-plaque plaque">
-    <span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>
     <div class="auth-logo"><img src="assets/logo-wordmark.png" alt="LAK"></div>
     <span class="eyebrow">Espace client</span>
     <h1>Connexion</h1>
@@ -264,23 +277,28 @@
 
   <main class="app-main">
 
+    <div class="topbar">
+      <button class="theme-toggle" id="themeToggle" aria-label="Changer de thème">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></svg>
+      </button>
+    </div>
+
     <section class="view-panel" data-view-panel="overview">
-      <div class="view-header">
+      <div class="view-header hero-head">
+        <div class="grid-bg"></div>
         <div><span class="eyebrow">Agence</span><h1>Vue d'ensemble</h1><p>Où en est LAK aujourd'hui.</p></div>
       </div>
       <div class="stat-grid" id="statGrid">
-        <div class="stat-tile plaque"><span class="tick tl"></span><span class="tick br"></span><div class="stat-num" id="statClients">–</div><div class="stat-label">Clients actifs</div></div>
-        <div class="stat-tile plaque"><span class="tick tl"></span><span class="tick br"></span><div class="stat-num" id="statProjects">–</div><div class="stat-label">Projets en cours</div></div>
-        <div class="stat-tile plaque"><span class="tick tl"></span><span class="tick br"></span><div class="stat-num" id="statNewLeads">–</div><div class="stat-label">Nouveaux prospects</div></div>
-        <div class="stat-tile plaque"><span class="tick tl"></span><span class="tick br"></span><div class="stat-num" id="statPipeline">–</div><div class="stat-label">Prospects en pipeline</div></div>
+        <div class="stat-tile plaque"><div class="stat-num" id="statClients">–</div><div class="stat-label">Clients actifs</div></div>
+        <div class="stat-tile plaque"><div class="stat-num" id="statProjects">–</div><div class="stat-label">Projets en cours</div></div>
+        <div class="stat-tile plaque"><div class="stat-num" id="statNewLeads">–</div><div class="stat-label">Nouveaux prospects</div></div>
+        <div class="stat-tile plaque"><div class="stat-num" id="statPipeline">–</div><div class="stat-label">Prospects en pipeline</div></div>
       </div>
       <div class="panel-row">
-        <div class="list-plaque plaque"><span class="tick tl"></span><span class="tick br"></span>
-          <h3>Prochaines échéances</h3>
+        <div class="list-plaque plaque">          <h3>Prochaines échéances</h3>
           <div id="upcomingList"></div>
         </div>
-        <div class="list-plaque plaque"><span class="tick tl"></span><span class="tick br"></span>
-          <h3>Derniers prospects</h3>
+        <div class="list-plaque plaque">          <h3>Derniers prospects</h3>
           <div id="recentLeadsList"></div>
         </div>
       </div>
@@ -608,7 +626,6 @@
     overlay.className = 'modal-overlay';
     overlay.innerHTML =
       '<div class="modal-panel plaque" style="max-width:380px;">' +
-        '<span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>' +
         '<div class="modal-head"><h2>Nouvelle colonne</h2><button class="modal-close" id="colClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
         '<div class="field"><label>Nom de l\'étape</label><input type="text" id="colName" placeholder="Ex : Relance"></div>' +
         '<button class="btn btn-accent" id="colSave" style="width:100%;">Créer la colonne</button>' +
@@ -663,7 +680,6 @@
     overlay.className = 'modal-overlay';
     overlay.innerHTML =
       '<div class="modal-panel plaque">' +
-        '<span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>' +
         '<div class="modal-head"><div><span class="eyebrow">Prospect</span><h2 style="margin-top:8px;">' + escapeHtml(l.first_name || '—') + '</h2></div><button class="modal-close" id="leadModalClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
         '<div class="detail-grid">' +
           '<div><span class="d-label">Entreprise</span><span>' + escapeHtml(l.company || '—') + '</span></div>' +
@@ -734,7 +750,6 @@
     overlay.className = 'modal-overlay';
     overlay.innerHTML =
       '<div class="modal-panel plaque">' +
-        '<span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>' +
         '<div class="modal-head"><h2 style="font-size:19px;">Nouveau prospect</h2><button class="modal-close" id="leadNewClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
         '<div class="field"><label>Nom</label><input type="text" id="leadNewName"></div>' +
         '<div class="field"><label>Entreprise</label><input type="text" id="leadNewCompany"></div>' +
@@ -827,7 +842,6 @@
     overlay.className = 'modal-overlay';
     overlay.innerHTML =
       '<div class="modal-panel plaque wide">' +
-        '<span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>' +
         '<div class="modal-head"><div><span class="eyebrow">Client</span><h2 style="margin-top:8px;">' + escapeHtml(c.name) + '</h2></div><button class="modal-close" id="modalCloseBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
         '<div class="modal-tabs">' +
           '<button class="modal-tab" data-tab="infos">Infos</button>' +
@@ -966,7 +980,7 @@
       '<div class="modal-section"><h4>Messages' + (messages.filter(function(m){return m.sender==='client' && !m.agency_read;}).length ? ' <span class="badge badge-accent">nouveau</span>' : '') + '</h4>' +
         '<div id="msgMgmtThread" style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:4px 2px;">' +
           (messages.length ? messages.map(function(m){
-            return '<div style="max-width:80%;padding:9px 12px;font-size:13.5px;' + (m.sender === 'agency' ? 'align-self:flex-end;background:var(--accent);color:#fff;' : 'align-self:flex-start;background:var(--bg);border:1px solid var(--line-strong);') + '">' + escapeHtml(m.body) + '</div>';
+            return '<div style="max-width:80%;padding:9px 12px;font-size:13.5px;border-radius:12px;' + (m.sender === 'agency' ? 'align-self:flex-end;background:var(--accent);color:#fff;' : 'align-self:flex-start;background:var(--bg);border:1px solid var(--line-strong);') + '">' + escapeHtml(m.body) + '</div>';
           }).join('') : '<p class="empty-note">Aucun message.</p>') +
         '</div>' +
         '<div class="onb-field-row" style="margin-top:12px;grid-template-columns:1fr auto;align-items:flex-end;">' +
@@ -1153,7 +1167,6 @@
     overlay.className = 'modal-overlay';
     overlay.innerHTML =
       '<div class="modal-panel plaque xwide">' +
-        '<span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>' +
         '<div class="modal-head"><div><span class="eyebrow">Roadmap</span><h2 style="margin-top:8px;">' + escapeHtml(client.name) + '</h2></div><button class="modal-close" id="rmClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
         '<div class="kanban" id="rmKanban"></div>' +
       '</div>';
@@ -1238,7 +1251,6 @@
     overlay.className = 'modal-overlay';
     overlay.innerHTML =
       '<div class="modal-panel plaque">' +
-        '<span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>' +
         '<div class="modal-head"><h2 style="font-size:19px;">' + (itemId ? 'Modifier la tâche' : 'Nouvelle tâche') + '</h2><button class="modal-close" id="tdClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
         (embedUrl ? '<iframe class="video-embed" src="' + embedUrl + '" allowfullscreen></iframe>' : (item.video_link ? '<a href="' + escapeHtml(item.video_link) + '" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="margin-bottom:16px;">Voir la vidéo ↗</a>' : '')) +
         '<div class="field"><label>Titre</label><input type="text" id="tdTitle" value="' + escapeHtml(item.title) + '"></div>' +
@@ -1305,7 +1317,6 @@
     overlay.className = 'modal-overlay';
     overlay.innerHTML =
       '<div class="modal-panel plaque xwide">' +
-        '<span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>' +
         '<div class="modal-head"><h2 style="font-size:19px;">Générer un rapport — ' + escapeHtml(client.name) + '</h2><button class="modal-close" id="repClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
         '<div id="repStepPick">' +
           '<div class="onb-field-row" style="margin-bottom:18px;"><div class="field"><label>Période — du</label><input type="date" id="repDateStart"></div><div class="field"><label>Au</label><input type="date" id="repDateEnd" value="' + today + '"></div></div>' +
@@ -1472,7 +1483,6 @@
     overlay.className = 'modal-overlay';
     overlay.innerHTML =
       '<div class="modal-panel plaque">' +
-        '<span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>' +
         '<div class="modal-head"><div><span class="eyebrow">Projet</span><h2 style="margin-top:8px;">' + escapeHtml(p.name) + '</h2></div><button class="modal-close" id="projModalClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
         '<div class="detail-grid"><div><span class="d-label">Client</span><span>' + (c ? escapeHtml(c.company || c.name) : '—') + '</span></div></div>' +
         '<div class="field"><label>Statut</label><select id="projModalStatus">' + statusOptions + '</select></div>' +
@@ -1516,7 +1526,6 @@
     overlay.className = 'modal-overlay';
     overlay.innerHTML =
       '<div class="modal-panel plaque" style="max-width:460px;">' +
-        '<span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>' +
         '<div class="modal-head"><h2>Nouveau projet</h2><button class="modal-close" id="npClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
         '<div class="field"><label>Nom du projet</label><input type="text" id="npName"></div>' +
         '<div class="field"><label>Client</label><select id="npClient">' + clientOptions + '</select></div>' +
@@ -1558,6 +1567,12 @@
     if(isNaN(date)) return '—';
     return date.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
   }
+
+  var themeToggle = document.getElementById('themeToggle');
+  if(themeToggle) themeToggle.addEventListener('click', function(){
+    var root = document.documentElement;
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
 
   /* ---------------- Bootstrap ---------------- */
   var existing = loadSession();
