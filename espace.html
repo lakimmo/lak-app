@@ -79,11 +79,17 @@
   .side-link svg{ width:16px;height:16px; flex:none; }
   .side-link:hover{ background:var(--bg-hover); color:var(--ink); }
   .side-link.active{ background:var(--accent-soft); color:var(--accent-ink); }
+  .referral-badge{ appearance:none; -webkit-appearance:none; display:block; width:100%; text-align:left; border:none; background:var(--accent-soft); border-radius:var(--radius-sm); padding:14px; font-family:inherit; font-size:12.5px; line-height:1.5; color:var(--accent-ink); cursor:pointer; animation:referral-float 3.2s ease-in-out infinite; }
+  .referral-badge:hover{ filter:brightness(0.97); }
+  .referral-badge b{ display:block; font-weight:700; font-size:12.5px; margin-bottom:4px; }
+  @keyframes referral-float{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-6px); } }
+  @media (prefers-reduced-motion: reduce){ .referral-badge{ animation:none; } }
   @media (max-width:860px){
     .shell{ flex-direction:column; }
     .sidebar{ width:auto; height:auto; position:relative; flex-direction:row; align-items:center; overflow-x:auto; padding:14px 18px; border-right:none; border-bottom:1px solid var(--line); }
     .side-client{ display:none; }
     .side-nav{ flex-direction:row; }
+    .referral-badge{ display:none; }
   }
   .main{ flex:1; min-width:0; margin:14px 14px 14px 0; min-height:calc(100vh - 28px); background-color:var(--bg); background-image:linear-gradient(to right, color-mix(in srgb, var(--line-strong) 25%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, var(--line-strong) 25%, transparent) 1px, transparent 1px); background-size:40px 40px; border:1px solid var(--line); border-radius:var(--radius-lg); box-shadow:var(--shadow-card); padding:clamp(26px,4vw,50px); }
   @media (max-width:860px){ .main{ margin:0; border-radius:0; border:none; box-shadow:none; min-height:auto; } }
@@ -258,6 +264,9 @@
         <button class="side-link" data-page="admin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 4h16v4H4zM4 10h16v10H4z"/><path d="M9 14h6"/></svg> Administratif</button>
         <button class="side-link" data-page="rdv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="16" rx="1"/><path d="M3 9h18M8 3v4M16 3v4"/></svg> Rendez-vous</button>
       </nav>
+      <button type="button" class="referral-badge" id="referralBadge" hidden>
+        <b id="referralBadgeTitle"></b>
+      </button>
     </aside>
 
     <main class="main">
@@ -408,6 +417,14 @@
     var contractCard = document.getElementById('contractCard');
     contractCard.hidden = !contract.url;
     if(contract.url) document.getElementById('contractLinkBtn').href = contract.url;
+
+    var referral = cfg.referral || {};
+    var referralBadge = document.getElementById('referralBadge');
+    referralBadge.hidden = !(referral.title || referral.description);
+    if(!referralBadge.hidden){
+      document.getElementById('referralBadgeTitle').textContent = referral.title || '';
+      referralBadge.onclick = function(){ openReferralModal(referral); };
+    }
 
     document.getElementById('dashRoadmapCount').textContent = (data.roadmap_items || []).length;
 
@@ -658,6 +675,19 @@
     document.body.appendChild(box);
     box.addEventListener('click', function(e){ if(e.target === box) document.body.removeChild(box); });
     box.querySelector('#vlClose').addEventListener('click', function(){ document.body.removeChild(box); });
+  }
+
+  function openReferralModal(referral){
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-panel plaque" style="max-width:440px;">' +
+        '<div class="modal-head"><h2 style="font-size:19px;">' + escapeHtml(referral.title || '') + '</h2><button class="modal-close" id="referralModalClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
+        '<p style="font-size:14.5px;color:var(--ink-dim);line-height:1.6;margin:0;white-space:pre-wrap;">' + escapeHtml(referral.description || '') + '</p>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e){ if(e.target === overlay) document.body.removeChild(overlay); });
+    overlay.querySelector('#referralModalClose').addEventListener('click', function(){ document.body.removeChild(overlay); });
   }
 
   var themeToggle = document.getElementById('themeToggle');
