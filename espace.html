@@ -56,9 +56,10 @@
 
   .field{ display:flex; flex-direction:column; gap:7px; margin-bottom:16px; }
   .field label{ font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-dim); }
-  .field input, .field textarea{ font-family:var(--font-body); font-size:14.5px; color:var(--ink); background:var(--bg-panel); border:1px solid var(--line-strong); border-radius:var(--radius-sm); padding:11px 12px; width:100%; }
+  .field input, .field textarea, .field select{ font-family:var(--font-body); font-size:14.5px; color:var(--ink); background:var(--bg-panel); border:1px solid var(--line-strong); border-radius:var(--radius-sm); padding:11px 12px; width:100%; appearance:none; -webkit-appearance:none; }
+  .field select{ background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%236E6454" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>'); background-repeat:no-repeat; background-position:right 12px center; background-size:15px; padding-right:36px; }
   .field textarea{ min-height:90px; resize:vertical; }
-  .field input:focus, .field textarea:focus{ outline:none; border-color:var(--accent); }
+  .field input:focus, .field textarea:focus, .field select:focus{ outline:none; border-color:var(--accent); }
 
   .badge{ display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.05em; text-transform:uppercase; padding:4px 9px; border:1px solid currentColor; }
   .badge-neutral{ color:var(--ink-dim); }
@@ -293,7 +294,7 @@
         <div class="dash-grid">
           <div>
             <div class="dash-card plaque" id="formCard" hidden><h3 id="formCardTitle">Formulaire à compléter</h3><p style="font-size:13.5px;color:var(--ink-dim);margin:0 0 14px;">Merci de le compléter pour la suite du projet.</p><a href="#" target="_blank" rel="noopener" class="btn btn-accent btn-sm" id="formLinkBtn">Remplir le formulaire</a></div>
-            <div class="dash-card plaque"><h3>Roadmap</h3><div class="mini-num" id="dashRoadmapCount">0</div><div class="mini-label">objectifs au total</div></div>
+            <div class="dash-card plaque"><h3>Projet<span id="dashProjectsPlural"></span> en cours</h3><div id="dashProjectsList"></div></div>
           </div>
           <div>
             <div class="dash-card plaque"><h3>Un besoin ?</h3><p style="font-size:13.5px;color:var(--ink-dim);margin:0 0 14px;">Écrivez-nous directement ou réservez un créneau.</p><div style="display:flex;gap:10px;flex-wrap:wrap;"><a href="https://wa.me/33769892601" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Écrire sur WhatsApp</a><button class="btn btn-outline btn-sm" data-goto="rdv">Prendre RDV</button></div></div>
@@ -303,6 +304,11 @@
 
       <section data-page-panel="roadmap" hidden>
         <div class="page-head"><span class="eyebrow">Suivi de projet</span><h1 style="margin-top:8px;">Roadmap</h1><p>Ajoutez, déplacez ou détaillez les tâches — modifiable par vous comme par l'équipe LAK.</p></div>
+        <div class="field" id="projectSelectWrap" style="max-width:340px;" hidden>
+          <label for="projectSelect">Projet</label>
+          <select id="projectSelect"></select>
+        </div>
+        <p class="empty-note" id="noProjectsNote" hidden>Aucun projet pour le moment — contactez votre interlocuteur LAK.</p>
         <div class="kanban" id="kanban"></div>
       </section>
 
@@ -354,6 +360,8 @@
   var params = new URLSearchParams(window.location.search);
   var token = params.get('token');
   var current = null; // dernier payload get_onboarding
+  var currentProjectId = null;
+  var PROJECT_STATUS_LABELS = { cadrage:'Cadrage', en_cours:'En cours', en_pause:'En pause', termine:'Terminé' };
 
   function rpc(name, body){
     return fetch(SUPABASE_URL + '/rest/v1/rpc/' + name, {
@@ -428,9 +436,37 @@
       referralBadge.onclick = function(){ openReferralModal(referral); };
     }
 
-    document.getElementById('dashRoadmapCount').textContent = (data.roadmap_items || []).length;
+    var projects = data.projects || [];
+    document.getElementById('dashProjectsPlural').textContent = projects.length > 1 ? 's' : '';
+    var projectsListEl = document.getElementById('dashProjectsList');
+    projectsListEl.innerHTML = projects.length ? projects.map(function(p, i){
+      return '<div style="padding:9px 0;' + (i > 0 ? 'border-top:1px solid var(--line);' : '') + '">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;"><span style="font-weight:600;font-size:13.5px;">' + escapeHtml(p.name) + '</span><span class="badge ' + (p.status === 'termine' ? 'badge-success' : 'badge-neutral') + '">' + escapeHtml(PROJECT_STATUS_LABELS[p.status] || p.status) + '</span></div>' +
+        (p.target_date ? '<div style="font-size:11.5px;color:var(--ink-faint);margin-top:3px;">Échéance ' + formatDate(p.target_date) + '</div>' : '') +
+      '</div>';
+    }).join('') : '<p class="empty-note">Aucun projet pour le moment.</p>';
 
-    renderKanban(data.roadmap_stages || [], data.roadmap_items || []);
+    var projectSelect = document.getElementById('projectSelect');
+    var projectSelectWrap = document.getElementById('projectSelectWrap');
+    var noProjectsNote = document.getElementById('noProjectsNote');
+    if(projects.length){
+      projectSelectWrap.hidden = false;
+      noProjectsNote.hidden = true;
+      projectSelect.innerHTML = projects.map(function(p){ return '<option value="' + p.id + '">' + escapeHtml(p.name) + '</option>'; }).join('');
+      if(!currentProjectId || !projects.some(function(p){ return p.id === currentProjectId; })){
+        currentProjectId = projects[0].id;
+      }
+      projectSelect.value = currentProjectId;
+      projectSelect.onchange = function(){
+        currentProjectId = projectSelect.value;
+        renderKanban(current.roadmap_stages, itemsForCurrentProject());
+      };
+    } else {
+      projectSelectWrap.hidden = true;
+      noProjectsNote.hidden = false;
+    }
+
+    renderKanban(data.roadmap_stages || [], itemsForCurrentProject());
 
     document.querySelectorAll('.side-link[data-page]').forEach(function(btn){
       btn.onclick = function(){
@@ -447,6 +483,9 @@
   }
 
   /* ---------------- Roadmap kanban ---------------- */
+  function itemsForCurrentProject(){
+    return (current.roadmap_items || []).filter(function(it){ return it.project_id === currentProjectId; });
+  }
   function renderKanban(stages, items){
     var kanban = document.getElementById('kanban');
     kanban.innerHTML = stages.map(function(stage){
@@ -476,8 +515,8 @@
         if(!id) return;
         var item = current.roadmap_items.find(function(x){ return x.id === id; });
         if(!item) return;
-        rpc('upsert_roadmap_item', { p_token:token, p_item_id:id, p_stage:col.dataset.colStage, p_title:item.title, p_description:item.description, p_video_link:item.video_link, p_deadline:item.deadline || null, p_completed_at:item.completed_at || null })
-          .then(function(){ item.stage = col.dataset.colStage; renderKanban(current.roadmap_stages, current.roadmap_items); });
+        rpc('upsert_roadmap_item', { p_token:token, p_item_id:id, p_stage:col.dataset.colStage, p_title:item.title, p_description:item.description, p_video_link:item.video_link, p_deadline:item.deadline || null, p_completed_at:item.completed_at || null, p_project_id:item.project_id || null })
+          .then(function(){ item.stage = col.dataset.colStage; renderKanban(current.roadmap_stages, itemsForCurrentProject()); });
       });
     });
     kanban.querySelectorAll('[data-del-stage]').forEach(function(btn){
@@ -488,7 +527,7 @@
         if(used){ alert('Déplacez d\'abord les tâches de cette colonne.'); return; }
         if(!confirm('Supprimer la colonne « ' + stageLabel(stageObj.name) + ' » ?')) return;
         rpc('delete_roadmap_stage', { p_token:token, p_stage_id:stageObj.id }).then(function(ok){
-          if(ok){ current.roadmap_stages = current.roadmap_stages.filter(function(s){ return s.id !== stageObj.id; }); renderKanban(current.roadmap_stages, current.roadmap_items); }
+          if(ok){ current.roadmap_stages = current.roadmap_stages.filter(function(s){ return s.id !== stageObj.id; }); renderKanban(current.roadmap_stages, itemsForCurrentProject()); }
         });
       });
     });
@@ -497,7 +536,7 @@
       var name = prompt('Nom de la nouvelle colonne :');
       if(!name) return;
       rpc('create_roadmap_stage', { p_token:token, p_name:name }).then(function(id){
-        if(id){ current.roadmap_stages.push({ id:id, name:name, position: current.roadmap_stages.length }); renderKanban(current.roadmap_stages, current.roadmap_items); }
+        if(id){ current.roadmap_stages.push({ id:id, name:name, position: current.roadmap_stages.length }); renderKanban(current.roadmap_stages, itemsForCurrentProject()); }
       });
     });
   }
@@ -543,7 +582,7 @@
       var videoLink = overlay.querySelector('#taskVideo').value.trim();
       var deadline = overlay.querySelector('#taskDeadline').value || null;
       var completedAt = overlay.querySelector('#taskCompleted').value || null;
-      rpc('upsert_roadmap_item', { p_token:token, p_item_id:itemId || null, p_stage:item.stage, p_title:title, p_description:description, p_video_link:videoLink || null, p_deadline:deadline, p_completed_at:completedAt })
+      rpc('upsert_roadmap_item', { p_token:token, p_item_id:itemId || null, p_stage:item.stage, p_title:title, p_description:description, p_video_link:videoLink || null, p_deadline:deadline, p_completed_at:completedAt, p_project_id:item.project_id || currentProjectId })
         .then(function(id){
           if(!id) return;
           var watchedEl = overlay.querySelector('#taskWatched');
@@ -552,10 +591,9 @@
               var idx = current.roadmap_items.findIndex(function(x){ return x.id === itemId; });
               current.roadmap_items[idx] = Object.assign({}, current.roadmap_items[idx], { title:title, description:description, video_link:videoLink, deadline:deadline, completed_at:completedAt, video_watched: watchedEl ? watchedEl.checked : current.roadmap_items[idx].video_watched });
             } else {
-              current.roadmap_items.push({ id:id, title:title, description:description, video_link:videoLink, video_watched:false, stage:item.stage, position: current.roadmap_items.length, deadline:deadline, completed_at:completedAt });
+              current.roadmap_items.push({ id:id, title:title, description:description, video_link:videoLink, video_watched:false, stage:item.stage, position: current.roadmap_items.length, deadline:deadline, completed_at:completedAt, project_id: item.project_id || currentProjectId });
             }
-            renderKanban(current.roadmap_stages, current.roadmap_items);
-            document.getElementById('dashRoadmapCount').textContent = current.roadmap_items.length;
+            renderKanban(current.roadmap_stages, itemsForCurrentProject());
             document.body.removeChild(overlay);
           };
           if(watchedEl && itemId){
@@ -569,8 +607,7 @@
       rpc('delete_roadmap_item', { p_token:token, p_item_id:itemId }).then(function(ok){
         if(ok){
           current.roadmap_items = current.roadmap_items.filter(function(x){ return x.id !== itemId; });
-          renderKanban(current.roadmap_stages, current.roadmap_items);
-          document.getElementById('dashRoadmapCount').textContent = current.roadmap_items.length;
+          renderKanban(current.roadmap_stages, itemsForCurrentProject());
           document.body.removeChild(overlay);
         }
       });
@@ -598,13 +635,15 @@
   }
 
   function openInvoice(invoiceId){
+    var win = window.open('', '_blank');
     fetch(SUPABASE_URL + '/functions/v1/get-invoice-url', {
       method:'POST',
       headers:{ 'Content-Type':'application/json', 'apikey':SUPABASE_ANON_KEY },
       body: JSON.stringify({ token:token, invoice_id:invoiceId })
     }).then(function(r){ return r.json(); }).then(function(d){
-      if(d.url) window.open(d.url, '_blank');
-    });
+      if(d.url && win) win.location.href = d.url;
+      else if(win) win.close();
+    }).catch(function(){ if(win) win.close(); });
   }
 
   /* ---------------- Reports ---------------- */
