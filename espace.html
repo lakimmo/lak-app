@@ -110,7 +110,12 @@
   .briefing-card{ padding:26px 28px; margin-bottom:26px; border-left:4px solid var(--accent); }
   .briefing-card p{ font-size:16.5px; line-height:1.65; color:var(--ink); margin:12px 0 0; }
   .project-bar{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:14px; }
-  .project-desc{ font-size:14px; color:var(--ink-dim); line-height:1.65; margin:0 0 26px; max-width:640px; }
+  .project-details{ margin:0 0 26px; }
+  .project-details summary{ cursor:pointer; font-family:var(--font-mono); font-size:11.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-dim); list-style:none; display:inline-flex; align-items:center; gap:8px; user-select:none; }
+  .project-details summary::-webkit-details-marker{ display:none; }
+  .project-details summary::before{ content:"▸"; font-size:9px; color:var(--accent); transition:transform .15s ease; display:inline-block; }
+  .project-details[open] summary::before{ transform:rotate(90deg); }
+  .project-desc{ font-size:14px; color:var(--ink-dim); line-height:1.65; margin:12px 0 0; max-width:640px; }
   .project-hero-meta{ display:flex; gap:10px; flex-wrap:wrap; }
   .project-hero-chip{ display:flex; align-items:center; gap:8px; background:var(--accent-soft); color:var(--accent-ink); padding:8px 14px; border-radius:var(--radius-sm); font-family:var(--font-mono); font-size:12px; }
   .project-hero-chip svg{ width:14px; height:14px; flex:none; }
@@ -319,7 +324,10 @@
             <div class="project-hero-chip" id="projectInfoDeadline" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg><span></span></div>
           </div>
         </div>
-        <p class="project-desc" id="projectInfoDesc"></p>
+        <details class="project-details" id="projectInfoDetails">
+          <summary>Description du projet</summary>
+          <p class="project-desc" id="projectInfoDesc"></p>
+        </details>
         <div class="page-head"><span class="eyebrow">Suivi de projet</span><h1 style="margin-top:8px;">Roadmap</h1></div>
         <p class="empty-note" id="noProjectsNote" hidden>Aucun projet pour le moment — contactez votre interlocuteur LAK.</p>
         <div class="kanban" id="kanban"></div>
@@ -533,10 +541,12 @@
   }
   function renderProjectInfoCard(projects){
     var datesRow = document.getElementById('projectInfoDatesRow');
+    var detailsEl = document.getElementById('projectInfoDetails');
     var descEl = document.getElementById('projectInfoDesc');
     var p = currentProjectId === 'all' ? null : projects.find(function(x){ return x.id === currentProjectId; });
-    if(!p){ datesRow.hidden = true; descEl.hidden = true; return; }
-    descEl.hidden = false;
+    detailsEl.open = false;
+    if(!p){ datesRow.hidden = true; detailsEl.hidden = true; return; }
+    detailsEl.hidden = false;
     descEl.textContent = p.description || 'Aucune description pour ce projet.';
     var startEl = document.getElementById('projectInfoStart');
     startEl.hidden = !p.start_date;
