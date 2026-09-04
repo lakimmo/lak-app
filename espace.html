@@ -13,6 +13,8 @@
     --accent:#FF6B1A; --accent-soft:#FFE7D2; --accent-ink:#B84E10;
     --line:#ECE4D4; --line-strong:#D9CDB2; --line-soft:#F2EBDD;
     --success:#2E7D46; --success-soft:#E3F3E6;
+    --warning:#C9720A; --warning-soft:#FBEAD2;
+    --danger:#B3271A; --danger-soft:#FBE2DE;
     --shadow-card:0 1px 2px rgba(23,19,16,.04), 0 14px 28px -20px rgba(23,19,16,.14);
     --shadow-pop:0 2px 6px rgba(23,19,16,.06), 0 24px 40px -20px rgba(23,19,16,.18);
     --font-display:'Bricolage Grotesque','Arial Black',sans-serif;
@@ -27,6 +29,8 @@
     --accent:#FF7A2E; --accent-soft:#3A2416; --accent-ink:#FFB183;
     --line:#332B22; --line-strong:#4A4033; --line-soft:#2A241C;
     --success:#4FAE6C; --success-soft:#1B2E20;
+    --warning:#FFA94D; --warning-soft:#3A2A16;
+    --danger:#E06A5C; --danger-soft:#3A211D;
     --shadow-card:0 1px 2px rgba(0,0,0,.2), 0 14px 28px -20px rgba(0,0,0,.5);
     --shadow-pop:0 2px 6px rgba(0,0,0,.3), 0 24px 40px -20px rgba(0,0,0,.6);
   }
@@ -151,6 +155,12 @@
   .roadmap-card h4{ font-family:var(--font-body); font-weight:700; font-size:13.5px; margin:0; }
   .roadmap-card .rc-video{ font-family:var(--font-mono); font-size:10px; color:var(--accent); display:flex; align-items:center; gap:5px; }
   .roadmap-card .rc-video svg{ width:11px;height:11px; }
+  .deadline-chip{ display:inline-flex; align-items:center; font-family:var(--font-mono); font-size:10.5px; padding:3px 8px; border-radius:6px; letter-spacing:0.02em; }
+  .deadline-chip--later{ background:var(--line-soft); color:var(--ink-dim); }
+  .deadline-chip--upcoming{ background:var(--accent-soft); color:var(--accent-ink); }
+  .deadline-chip--soon{ background:var(--warning-soft); color:var(--warning); }
+  .deadline-chip--urgent{ background:var(--danger-soft); color:var(--danger); }
+  .deadline-chip--done{ background:var(--success-soft); color:var(--success); }
   .add-card-btn{ border:1px dashed var(--line-strong); border-radius:var(--radius-sm); background:none; padding:10px; font-family:var(--font-mono); font-size:11px; color:var(--ink-dim); cursor:pointer; }
   .add-card-btn:hover{ border-color:var(--accent); color:var(--accent); }
   .kanban-add-col{ display:flex; align-items:flex-start; padding-top:28px; }
@@ -618,7 +628,7 @@
       '<h4>' + escapeHtml(it.title) + '</h4>' +
       (itProject ? '<div style="font-size:12px;color:var(--ink-faint);margin-bottom:6px;">' + escapeHtml(itProject.name) + '</div>' : '') +
       (it.video_link ? '<span class="rc-video"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7Z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>' + (it.video_watched ? 'Vidéo vue' : 'Vidéo à voir') + '</span>' : '') +
-      (it.completed_at ? '<span class="rc-video" style="color:var(--success);">Fait le ' + formatDate(it.completed_at) + '</span>' : (it.deadline ? '<span class="rc-video">Deadline ' + formatDate(it.deadline) + '</span>' : '')) +
+      deadlineChipHtml(it.deadline, it.completed_at) +
     '</div>';
   }
 
@@ -689,6 +699,21 @@
 
   function formatTime(d){ return new Date(d).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }); }
   function formatDate(d){ if(!d) return '—'; return new Date(d).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' }); }
+  var FRENCH_MONTHS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  function formatShortDate(d){
+    if(!d) return '';
+    var parts = d.split('-');
+    var month = FRENCH_MONTHS[parseInt(parts[1], 10) - 1];
+    return parseInt(parts[2], 10) + ' ' + month;
+  }
+  function deadlineChipHtml(deadline, completedAt){
+    if(completedAt) return '<span class="deadline-chip deadline-chip--done">' + formatShortDate(completedAt) + '</span>';
+    if(!deadline) return '';
+    var today = new Date(); today.setHours(0,0,0,0);
+    var days = Math.round((new Date(deadline + 'T00:00:00') - today) / 86400000);
+    var tier = days < 3 ? 'urgent' : days < 7 ? 'soon' : days < 14 ? 'upcoming' : 'later';
+    return '<span class="deadline-chip deadline-chip--' + tier + '">' + formatShortDate(deadline) + '</span>';
+  }
 
   /* ---------------- Administratif ---------------- */
   function loadInvoices(){
