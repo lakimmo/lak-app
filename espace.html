@@ -75,6 +75,7 @@
   .logo img{ height:19px; width:auto; display:block; }
   .side-client{ font-size:12.5px; color:var(--ink-faint); padding:0 8px; }
   .side-nav{ display:flex; flex-direction:column; gap:2px; flex:1; }
+  .side-nav-divider{ height:1px; background:var(--line); margin:8px 12px; }
   .side-link{ display:flex; align-items:center; gap:10px; text-align:left; background:none; border:none; border-radius:var(--radius-sm); padding:9px 12px; font-size:13.5px; font-weight:600; color:var(--ink-dim); cursor:pointer; }
   .side-link svg{ width:16px;height:16px; flex:none; }
   .side-link:hover{ background:var(--bg-hover); color:var(--ink); }
@@ -89,6 +90,7 @@
     .sidebar{ width:auto; height:auto; position:relative; flex-direction:row; align-items:center; overflow-x:auto; padding:14px 18px; border-right:none; border-bottom:1px solid var(--line); }
     .side-client{ display:none; }
     .side-nav{ flex-direction:row; }
+    .side-nav-divider{ width:1px; height:auto; align-self:stretch; margin:0 4px; }
     .referral-badge{ display:none; }
   }
   .main{ flex:1; min-width:0; margin:14px 14px 14px 0; min-height:calc(100vh - 28px); background-color:var(--bg); background-image:linear-gradient(to right, color-mix(in srgb, var(--line-strong) 25%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, var(--line-strong) 25%, transparent) 1px, transparent 1px); background-size:40px 40px; border:1px solid var(--line); border-radius:var(--radius-lg); box-shadow:var(--shadow-card); padding:clamp(26px,4vw,50px); }
@@ -259,10 +261,10 @@
       <nav class="side-nav">
         <button class="side-link active" data-page="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="8" height="8"/><rect x="13" y="3" width="8" height="5"/><rect x="13" y="12" width="8" height="9"/><rect x="3" y="15" width="8" height="6"/></svg> Dashboard</button>
         <button class="side-link" data-page="roadmap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V5M4 5l6 4-6 4M14 19V9M14 9l6 4-6 4"/></svg> Roadmap</button>
-        <a class="side-link" href="https://wa.me/33769892601" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10Z"/></svg> Messages</a>
         <button class="side-link" data-page="reports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M9 12h6M9 16h6M9 8h2"/></svg> Rapports</button>
-        <button class="side-link" data-page="admin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 4h16v4H4zM4 10h16v10H4z"/><path d="M9 14h6"/></svg> Administratif</button>
+        <div class="side-nav-divider"></div>
         <button class="side-link" data-page="rdv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="16" rx="1"/><path d="M3 9h18M8 3v4M16 3v4"/></svg> Rendez-vous</button>
+        <button class="side-link" data-page="admin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 4h16v4H4zM4 10h16v10H4z"/><path d="M9 14h6"/></svg> Administratif</button>
       </nav>
       <button type="button" class="referral-badge" id="referralBadge" hidden>
         <b id="referralBadgeTitle"></b>
