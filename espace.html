@@ -303,10 +303,17 @@
       </section>
 
       <section data-page-panel="roadmap" hidden>
-        <div class="page-head"><span class="eyebrow">Suivi de projet</span><h1 style="margin-top:8px;">Roadmap</h1><p>Ajoutez, déplacez ou détaillez les tâches — modifiable par vous comme par l'équipe LAK.</p></div>
-        <div class="field" id="projectSelectWrap" style="max-width:340px;" hidden>
+        <div class="field" id="projectSelectWrap" style="max-width:340px;margin-bottom:18px;" hidden>
           <label for="projectSelect">Projet</label>
           <select id="projectSelect"></select>
+        </div>
+        <div class="page-head"><span class="eyebrow">Suivi de projet</span><h1 style="margin-top:8px;">Roadmap</h1><p>Ajoutez, déplacez ou détaillez les tâches — modifiable par vous comme par l'équipe LAK.</p></div>
+        <div class="plaque" id="projectInfoCard" style="padding:16px 20px;margin-bottom:22px;" hidden>
+          <p id="projectInfoDesc" style="font-size:13.5px;color:var(--ink-dim);margin:0;"></p>
+          <div style="display:flex;gap:22px;flex-wrap:wrap;margin-top:10px;">
+            <div id="projectInfoStart" style="font-size:12px;color:var(--ink-faint);font-family:var(--font-mono);"></div>
+            <div id="projectInfoDeadline" style="font-size:12px;color:var(--ink-faint);font-family:var(--font-mono);"></div>
+          </div>
         </div>
         <p class="empty-note" id="noProjectsNote" hidden>Aucun projet pour le moment — contactez votre interlocuteur LAK.</p>
         <div class="kanban" id="kanban"></div>
@@ -454,18 +461,21 @@
     if(projects.length){
       projectSelectWrap.hidden = false;
       noProjectsNote.hidden = true;
-      projectSelect.innerHTML = projects.map(function(p){ return '<option value="' + p.id + '">' + escapeHtml(p.name) + '</option>'; }).join('');
-      if(!currentProjectId || !projects.some(function(p){ return p.id === currentProjectId; })){
+      projectSelect.innerHTML = '<option value="all">Tout</option>' + projects.map(function(p){ return '<option value="' + p.id + '">' + escapeHtml(p.name) + '</option>'; }).join('');
+      if(currentProjectId === null || (currentProjectId !== 'all' && !projects.some(function(p){ return p.id === currentProjectId; }))){
         currentProjectId = projects[0].id;
       }
       projectSelect.value = currentProjectId;
+      renderProjectInfoCard(projects);
       projectSelect.onchange = function(){
         currentProjectId = projectSelect.value;
+        renderProjectInfoCard(projects);
         renderKanban(current.roadmap_stages, itemsForCurrentProject());
       };
     } else {
       projectSelectWrap.hidden = true;
       noProjectsNote.hidden = false;
+      document.getElementById('projectInfoCard').hidden = true;
     }
 
     renderKanban(data.roadmap_stages || [], itemsForCurrentProject());
@@ -486,7 +496,23 @@
 
   /* ---------------- Roadmap kanban ---------------- */
   function itemsForCurrentProject(){
+    if(currentProjectId === 'all') return current.roadmap_items || [];
     return (current.roadmap_items || []).filter(function(it){ return it.project_id === currentProjectId; });
+  }
+  function resolvedProjectId(){
+    if(currentProjectId && currentProjectId !== 'all') return currentProjectId;
+    var projects = current.projects || [];
+    return projects.length ? projects[0].id : null;
+  }
+  function renderProjectInfoCard(projects){
+    var card = document.getElementById('projectInfoCard');
+    if(currentProjectId === 'all'){ card.hidden = true; return; }
+    var p = projects.find(function(x){ return x.id === currentProjectId; });
+    if(!p){ card.hidden = true; return; }
+    card.hidden = false;
+    document.getElementById('projectInfoDesc').textContent = p.description || 'Aucune description pour ce projet.';
+    document.getElementById('projectInfoStart').textContent = p.start_date ? 'Début ' + formatDate(p.start_date) : '';
+    document.getElementById('projectInfoDeadline').textContent = p.target_date ? 'Échéance ' + formatDate(p.target_date) : '';
   }
   function renderKanban(stages, items){
     var kanban = document.getElementById('kanban');
@@ -544,8 +570,11 @@
   }
 
   function roadmapCardHtml(it){
+    var showProjectTag = currentProjectId === 'all';
+    var itProject = showProjectTag ? (current.projects || []).find(function(p){ return p.id === it.project_id; }) : null;
     return '<div class="roadmap-card plaque" draggable="true" data-item-id="' + it.id + '">' +
       '<h4>' + escapeHtml(it.title) + '</h4>' +
+      (itProject ? '<span class="badge badge-neutral" style="margin-bottom:6px;">' + escapeHtml(itProject.name) + '</span>' : '') +
       (it.video_link ? '<span class="rc-video"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7Z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>' + (it.video_watched ? 'Vidéo vue' : 'Vidéo à voir') + '</span>' : '') +
       (it.completed_at ? '<span class="rc-video" style="color:var(--success);">Fait le ' + formatDate(it.completed_at) + '</span>' : (it.deadline ? '<span class="rc-video">Deadline ' + formatDate(it.deadline) + '</span>' : '')) +
     '</div>';
@@ -584,7 +613,7 @@
       var videoLink = overlay.querySelector('#taskVideo').value.trim();
       var deadline = overlay.querySelector('#taskDeadline').value || null;
       var completedAt = overlay.querySelector('#taskCompleted').value || null;
-      rpc('upsert_roadmap_item', { p_token:token, p_item_id:itemId || null, p_stage:item.stage, p_title:title, p_description:description, p_video_link:videoLink || null, p_deadline:deadline, p_completed_at:completedAt, p_project_id:item.project_id || currentProjectId })
+      rpc('upsert_roadmap_item', { p_token:token, p_item_id:itemId || null, p_stage:item.stage, p_title:title, p_description:description, p_video_link:videoLink || null, p_deadline:deadline, p_completed_at:completedAt, p_project_id:item.project_id || resolvedProjectId() })
         .then(function(id){
           if(!id) return;
           var watchedEl = overlay.querySelector('#taskWatched');
@@ -593,7 +622,7 @@
               var idx = current.roadmap_items.findIndex(function(x){ return x.id === itemId; });
               current.roadmap_items[idx] = Object.assign({}, current.roadmap_items[idx], { title:title, description:description, video_link:videoLink, deadline:deadline, completed_at:completedAt, video_watched: watchedEl ? watchedEl.checked : current.roadmap_items[idx].video_watched });
             } else {
-              current.roadmap_items.push({ id:id, title:title, description:description, video_link:videoLink, video_watched:false, stage:item.stage, position: current.roadmap_items.length, deadline:deadline, completed_at:completedAt, project_id: item.project_id || currentProjectId });
+              current.roadmap_items.push({ id:id, title:title, description:description, video_link:videoLink, video_watched:false, stage:item.stage, position: current.roadmap_items.length, deadline:deadline, completed_at:completedAt, project_id: item.project_id || resolvedProjectId() });
             }
             renderKanban(current.roadmap_stages, itemsForCurrentProject());
             document.body.removeChild(overlay);

@@ -114,6 +114,9 @@
   .view-header p{ color:var(--ink-dim); font-size:13.5px; margin-top:6px; }
   .view-header.hero-head{ position:relative; overflow:hidden; border-radius:var(--radius-lg); padding:26px 28px; background:var(--bg-panel); border:1px solid var(--line); box-shadow:var(--shadow-card); align-items:center; }
   .view-header.hero-head > *{ position:relative; z-index:1; }
+  .view-toggle{ display:flex; gap:4px; background:var(--bg-panel); border:1px solid var(--line); border-radius:var(--radius-sm); padding:3px; flex:none; }
+  .view-toggle-btn{ border:none; background:none; padding:7px 14px; font-size:12.5px; font-weight:600; border-radius:calc(var(--radius-sm) - 3px); color:var(--ink-dim); cursor:pointer; }
+  .view-toggle-btn.active{ background:var(--accent); color:#fff; }
 
   /* ============ STAT TILES ============ */
   .stat-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:18px; margin-bottom:32px; }
@@ -317,6 +320,11 @@
           <div id="recentLeadsList"></div>
         </div>
       </div>
+
+      <div class="list-plaque plaque" style="margin-top:20px;">
+        <h3>Tâches à venir</h3>
+        <div id="upcomingTasksList"></div>
+      </div>
     </section>
 
     <section class="view-panel" data-view-panel="prospects" hidden>
@@ -362,13 +370,18 @@
     <section class="view-panel" data-view-panel="tasks" hidden>
       <div class="view-header">
         <div><span class="eyebrow">Delivery</span><h1>Tâches</h1><p>Toutes les tâches, tous projets et clients confondus.</p></div>
+        <div class="view-toggle" id="tasksViewToggle">
+          <button class="view-toggle-btn active" data-tasks-view="kanban">Kanban</button>
+          <button class="view-toggle-btn" data-tasks-view="list">Liste</button>
+        </div>
       </div>
       <div class="funnel-fields-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:18px;">
         <div class="field" style="margin-bottom:0;"><label>Client</label><select id="tasksFilterClient"><option value="">Tous les clients</option></select></div>
         <div class="field" style="margin-bottom:0;"><label>Projet</label><select id="tasksFilterProject"><option value="">Tous les projets</option></select></div>
         <div class="field" style="margin-bottom:0;"><label>Trier par</label><select id="tasksSort"><option value="deadline">Deadline (proche)</option><option value="created">Plus récentes</option></select></div>
       </div>
-      <div class="table-wrap plaque" style="padding:6px 0;">
+      <div class="kanban" id="tasksKanban"></div>
+      <div class="table-wrap plaque" id="tasksListWrap" style="padding:6px 0;" hidden>
         <table class="data-table">
           <thead><tr><th>Tâche</th><th>Client</th><th>Projet</th><th>Étape</th><th>Deadline</th></tr></thead>
           <tbody id="tasksBody"></tbody>
@@ -550,6 +563,7 @@
   }
 
   function clientById(id){ return cache.clients.find(function(c){ return c.id === id; }); }
+  function projectById(id){ return cache.projects.find(function(p){ return p.id === id; }); }
   function projectsForClient(id){ return cache.projects.filter(function(p){ return p.client_id === id; }); }
   function messagesForClient(id){ return cache.messages.filter(function(m){ return m.client_id === id; }); }
   function roadmapForClient(id){ return cache.roadmap.filter(function(r){ return r.client_id === id; }); }
@@ -578,6 +592,18 @@
     recentEl.innerHTML = recent.length ? recent.map(function(l){
       return '<div class="mini-row"><div><div class="m-title">' + escapeHtml(l.first_name || '—') + '</div><div class="m-sub">' + escapeHtml(l.company || '') + '</div></div>' + stageBadge(l.stage) + '</div>';
     }).join('') : '<p class="empty-note">Aucun prospect pour le moment.</p>';
+
+    var upcomingTasks = cache.roadmap.filter(function(it){ return it.deadline && !it.completed_at; })
+      .sort(function(a,b){ return new Date(a.deadline) - new Date(b.deadline); }).slice(0,6);
+    var upcomingTasksEl = document.getElementById('upcomingTasksList');
+    upcomingTasksEl.innerHTML = upcomingTasks.length ? upcomingTasks.map(function(it){
+      var c = clientById(it.client_id);
+      var p = projectById(it.project_id);
+      return '<div class="mini-row" data-overview-task="' + it.id + '" style="cursor:pointer;"><div><div class="m-title">' + escapeHtml(it.title) + '</div><div class="m-sub">' + (c ? escapeHtml(c.company || c.name) : '') + (p ? ' · <span class="badge badge-neutral" style="margin-left:2px;">' + escapeHtml(p.name) + '</span>' : '') + '</div></div><span class="badge badge-neutral">' + formatDate(it.deadline) + '</span></div>';
+    }).join('') : '<p class="empty-note">Aucune tâche à venir.</p>';
+    upcomingTasksEl.querySelectorAll('[data-overview-task]').forEach(function(row){
+      row.addEventListener('click', function(){ openTaskFromRow(row.dataset.overviewTask); });
+    });
   }
 
   /* ---------------- Prospects (Kanban) ---------------- */
@@ -906,7 +932,7 @@
         '</div>' +
 
         '<div class="tab-panel" data-tab-panel="espace" hidden>' +
-          espaceTabHtml(c, cfg, tasks) +
+          espaceTabHtml(c, cfg) +
         '</div>' +
       '</div>';
     document.body.appendChild(overlay);
@@ -987,39 +1013,21 @@
     );
   }
 
-  function espaceTabHtml(c, cfg, tasks){
+  function espaceTabHtml(c, cfg){
     if(!c.onboarding_token) return '<p class="empty-note">Générez d\'abord un lien dans l\'onglet Onboarding.</p>';
     var espaceLink = ESPACE_LINK_BASE + '?token=' + c.onboarding_token;
     var roadmap = roadmapForClient(c.id);
     var roadmapStages = roadmapStagesForClient(c.id);
-    var messages = messagesForClient(c.id);
     var reports = reportsForClient(c.id);
     var invoices = invoicesForClient(c.id);
     return (
       '<p class="lead" style="color:var(--ink-dim);font-size:13.5px;margin:0 0 18px;">' + escapeHtml(cfg.briefing || 'Aucun message de briefing défini.') + '</p>' +
-      '<div class="modal-section" style="margin-top:0;padding-top:0;border-top:none;"><h4>Tâches du client</h4><ul class="task-list" id="espaceTasks" style="list-style:none;padding:0;margin:0;">' +
-        tasks.map(function(t, i){
-          return '<li class="onboard-item' + (t.done ? ' done' : '') + '" data-espace-task="' + i + '"><span class="check">' + (t.done ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 12l5 5L20 6"/></svg>' : '') + '</span><span class="oi-label">' + escapeHtml(t.label) + '</span></li>';
-        }).join('') +
-      '</ul></div>' +
 
-      '<div class="modal-section"><h4>Roadmap</h4>' +
+      '<div class="modal-section" style="margin-top:0;padding-top:0;border-top:none;"><h4>Roadmap</h4>' +
         '<p style="font-size:13.5px;color:var(--ink-dim);margin:0 0 14px;">' + roadmap.length + ' tâche' + (roadmap.length !== 1 ? 's' : '') + ' · ' + roadmapStages.length + ' colonne' + (roadmapStages.length !== 1 ? 's' : '') + '</p>' +
         '<div class="detail-actions" style="margin-top:0;">' +
           '<button class="btn btn-outline btn-sm" id="openRoadmapBtn">Ouvrir la roadmap (plein écran)</button>' +
           '<button class="btn btn-accent btn-sm" id="openReportBtn">Générer un rapport</button>' +
-        '</div>' +
-      '</div>' +
-
-      '<div class="modal-section"><h4>Messages' + (messages.filter(function(m){return m.sender==='client' && !m.agency_read;}).length ? ' <span class="badge badge-accent">nouveau</span>' : '') + '</h4>' +
-        '<div id="msgMgmtThread" style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:4px 2px;">' +
-          (messages.length ? messages.map(function(m){
-            return '<div style="max-width:80%;padding:9px 12px;font-size:13.5px;border-radius:12px;' + (m.sender === 'agency' ? 'align-self:flex-end;background:var(--accent);color:#fff;' : 'align-self:flex-start;background:var(--bg);border:1px solid var(--line-strong);') + '">' + escapeHtml(m.body) + '</div>';
-          }).join('') : '<p class="empty-note">Aucun message.</p>') +
-        '</div>' +
-        '<div class="onb-field-row" style="margin-top:12px;grid-template-columns:1fr auto;align-items:flex-end;">' +
-          '<div class="field" style="margin-bottom:0;"><textarea id="msgMgmtInput" placeholder="Répondre au client…" style="min-height:60px;"></textarea></div>' +
-          '<button class="btn btn-accent btn-sm" id="msgMgmtSend">Envoyer</button>' +
         '</div>' +
       '</div>' +
 
@@ -1096,19 +1104,6 @@
   }
 
   function bindEspaceTab(overlay, c){
-    overlay.querySelectorAll('[data-espace-task]').forEach(function(el){
-      el.addEventListener('click', function(){
-        var idx = parseInt(el.dataset.espaceTask, 10);
-        var tasks = c.onboarding_config.tasks;
-        tasks[idx].done = !tasks[idx].done;
-        el.classList.toggle('done', tasks[idx].done);
-        el.querySelector('.check').innerHTML = tasks[idx].done ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 12l5 5L20 6"/></svg>' : '';
-        apiFetch('/rest/v1/clients?id=eq.' + c.id, { method:'PATCH', body: JSON.stringify({ onboarding_config: c.onboarding_config }) })
-          .then(function(r){ if(!r.ok) throw new Error(); })
-          .catch(function(){ showToast('Erreur : tâche non enregistrée.'); });
-      });
-    });
-
     var openRoadmapBtn = overlay.querySelector('#openRoadmapBtn');
     if(openRoadmapBtn) openRoadmapBtn.addEventListener('click', function(){ openRoadmapKanban(c); });
     var openReportBtn = overlay.querySelector('#openReportBtn');
@@ -1172,24 +1167,6 @@
           }).catch(function(){ showToast('Erreur : suppression impossible.'); });
       });
     });
-
-    var msgSendBtn = overlay.querySelector('#msgMgmtSend');
-    if(msgSendBtn){
-      msgSendBtn.addEventListener('click', function(){
-        var input = overlay.querySelector('#msgMgmtInput');
-        var body = input.value.trim();
-        if(!body) return;
-        apiFetch('/rest/v1/messages', { method:'POST', headers:{ 'Prefer':'return=representation' }, body: JSON.stringify({ client_id:c.id, sender:'agency', body:body, agency_read:true }) })
-          .then(function(r){ return r.json().then(function(d){ return { ok:r.ok, d:d }; }); })
-          .then(function(res){
-            if(!res.ok) throw new Error();
-            cache.messages.push(res.d[0]);
-            input.value = '';
-            document.body.removeChild(overlay);
-            openClientModal(c.id, 'espace');
-          }).catch(function(){ showToast('Erreur : message non envoyé.'); });
-      });
-    }
   }
 
   function markClientMessagesRead(c){
@@ -1243,7 +1220,9 @@
         return '<div class="kanban-col" data-col-stage="' + escapeHtml(stage.name) + '">' +
           '<div class="kanban-col-head"><span>' + escapeHtml(roadmapStageLabel(stage.name)) + '</span><span style="display:flex;align-items:center;gap:6px;"><span class="count">' + colItems.length + '</span><button class="kanban-col-del" data-del-stage="' + stage.id + '" title="Supprimer la colonne"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button></span></div>' +
           colItems.map(function(it){
+            var itProject = projectById(it.project_id);
             return '<div class="roadmap-card plaque" draggable="true" data-item-id="' + it.id + '"><h4>' + escapeHtml(it.title) + '</h4>' +
+              (itProject ? '<span class="badge badge-neutral" style="margin-bottom:6px;">' + escapeHtml(itProject.name) + '</span>' : '') +
               (it.video_link ? '<span class="rc-video"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7Z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>' + (it.video_watched ? 'Vidéo vue' : 'Vidéo à voir') + '</span>' : '') +
               (it.completed_at ? '<span class="rc-video" style="color:var(--success);">Fait le ' + formatDate(it.completed_at) + '</span>' : (it.deadline ? '<span class="rc-video">Deadline ' + formatDate(it.deadline) + '</span>' : '')) +
             '</div>';
@@ -1311,13 +1290,15 @@
     var projectOptions = clientProjects.length
       ? clientProjects.map(function(p){ return '<option value="' + p.id + '"' + (p.id === item.project_id ? ' selected' : '') + '>' + escapeHtml(p.name) + '</option>'; }).join('')
       : '<option value="">Aucun projet pour ce client</option>';
+    var clientStages = roadmapStagesForClient(client.id);
+    var stageOptions = clientStages.map(function(s){ return '<option value="' + escapeHtml(s.name) + '"' + (s.name === item.stage ? ' selected' : '') + '>' + escapeHtml(roadmapStageLabel(s.name)) + '</option>'; }).join('');
     var overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML =
       '<div class="modal-panel plaque">' +
         '<div class="modal-head"><h2 style="font-size:19px;">' + (itemId ? 'Modifier la tâche' : 'Nouvelle tâche') + '</h2><button class="modal-close" id="tdClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
         (embedUrl ? '<iframe class="video-embed" src="' + embedUrl + '" allowfullscreen></iframe>' : (item.video_link ? '<a href="' + escapeHtml(item.video_link) + '" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="margin-bottom:16px;">Voir la vidéo ↗</a>' : '')) +
-        '<div class="field"><label>Projet</label><select id="tdProject"' + (clientProjects.length ? '' : ' disabled') + '>' + projectOptions + '</select></div>' +
+        '<div class="onb-field-row"><div class="field"><label>Projet</label><select id="tdProject"' + (clientProjects.length ? '' : ' disabled') + '>' + projectOptions + '</select></div><div class="field"><label>Étape</label><select id="tdStage">' + stageOptions + '</select></div></div>' +
         '<div class="field"><label>Titre</label><input type="text" id="tdTitle" value="' + escapeHtml(item.title) + '"></div>' +
         '<div class="field"><label>Description <span style="text-transform:none;font-weight:400;">(visible par le client)</span></label><textarea id="tdDesc">' + escapeHtml(item.description || '') + '</textarea></div>' +
         '<div class="field"><label>Lien vidéo (facultatif)</label><input type="text" id="tdVideo" placeholder="https://..." value="' + escapeHtml(item.video_link || '') + '"></div>' +
@@ -1344,7 +1325,9 @@
       var completedAt = overlay.querySelector('#tdCompleted').value || null;
       var projectId = overlay.querySelector('#tdProject').value || null;
       var internalNote = overlay.querySelector('#tdNote').value;
-      var payload = { title:title, description:description, video_link: videoLink || null, deadline:deadline, completed_at:completedAt, project_id:projectId, internal_note:internalNote };
+      var stageEl = overlay.querySelector('#tdStage');
+      var stage = stageEl ? stageEl.value : (itemId ? item.stage : newStage);
+      var payload = { title:title, description:description, video_link: videoLink || null, deadline:deadline, completed_at:completedAt, project_id:projectId, internal_note:internalNote, stage:stage };
       if(watchedEl) payload.video_watched = watchedEl.checked;
 
       if(itemId){
@@ -1355,8 +1338,8 @@
             if(onDone) onDone();
           }).catch(function(){ showToast('Erreur : tâche non enregistrée.'); });
       } else {
-        var position = cache.roadmap.filter(function(x){ return x.client_id === client.id && x.stage === newStage; }).length;
-        apiFetch('/rest/v1/roadmap_items', { method:'POST', headers:{ 'Prefer':'return=representation' }, body: JSON.stringify(Object.assign({ client_id:client.id, stage:newStage, position:position }, payload)) })
+        var position = cache.roadmap.filter(function(x){ return x.client_id === client.id && x.stage === stage; }).length;
+        apiFetch('/rest/v1/roadmap_items', { method:'POST', headers:{ 'Prefer':'return=representation' }, body: JSON.stringify(Object.assign({ client_id:client.id, position:position }, payload)) })
           .then(function(r){ return r.json().then(function(d){ return { ok:r.ok, d:d }; }); })
           .then(function(res){ if(!res.ok) throw new Error();
             cache.roadmap.push(res.d[0]);
@@ -1629,6 +1612,7 @@
 
   /* ---------------- Tâches (centralisé) ---------------- */
   var tasksFilters = { client:'', project:'', sort:'deadline' };
+  var tasksViewMode = 'kanban';
 
   function populateTasksFilters(){
     var clientSel = document.getElementById('tasksFilterClient');
@@ -1646,9 +1630,7 @@
     if(projectsPool.some(function(p){ return p.id === projectVal; })) projectSel.value = projectVal;
   }
 
-  function renderTasks(){
-    populateTasksFilters();
-    var body = document.getElementById('tasksBody');
+  function tasksFilteredSorted(){
     var items = cache.roadmap.filter(function(it){
       if(tasksFilters.client && it.client_id !== tasksFilters.client) return false;
       if(tasksFilters.project && it.project_id !== tasksFilters.project) return false;
@@ -1664,10 +1646,29 @@
       if(!b.deadline) return -1;
       return a.deadline.localeCompare(b.deadline);
     });
+    return items;
+  }
 
+  function openTaskFromRow(itemId){
+    var it = cache.roadmap.find(function(x){ return x.id === itemId; });
+    var c = it && clientById(it.client_id);
+    if(!c) return;
+    openTaskDetail(c, it.id, null, renderTasks);
+  }
+
+  function renderTasks(){
+    populateTasksFilters();
+    document.getElementById('tasksKanban').hidden = (tasksViewMode !== 'kanban');
+    document.getElementById('tasksListWrap').hidden = (tasksViewMode !== 'list');
+    var items = tasksFilteredSorted();
+    if(tasksViewMode === 'kanban') renderTasksKanban(items); else renderTasksList(items);
+  }
+
+  function renderTasksList(items){
+    var body = document.getElementById('tasksBody');
     body.innerHTML = items.map(function(it){
       var c = clientById(it.client_id);
-      var p = cache.projects.find(function(x){ return x.id === it.project_id; });
+      var p = projectById(it.project_id);
       return '<tr data-task-row="' + it.id + '">' +
         '<td><div class="cell-name">' + escapeHtml(it.title) + '</div></td>' +
         '<td>' + (c ? escapeHtml(c.company || c.name) : '—') + '</td>' +
@@ -1678,18 +1679,50 @@
     }).join('') || '<tr><td colspan="5" class="empty-note">Aucune tâche pour le moment.</td></tr>';
 
     body.querySelectorAll('[data-task-row]').forEach(function(row){
-      row.addEventListener('click', function(){
-        var it = cache.roadmap.find(function(x){ return x.id === row.dataset.taskRow; });
-        var c = it && clientById(it.client_id);
-        if(!c) return;
-        openTaskDetail(c, it.id, null, renderTasks);
-      });
+      row.addEventListener('click', function(){ openTaskFromRow(row.dataset.taskRow); });
+    });
+  }
+
+  var TASKS_KANBAN_STAGES = ['idee', 'a_faire', 'en_cours', 'termine'];
+
+  function renderTasksKanban(items){
+    var kanban = document.getElementById('tasksKanban');
+    var buckets = TASKS_KANBAN_STAGES.map(function(name){ return { name:name, label:roadmapStageLabel(name), items:[] }; });
+    buckets.push({ name:'__autres', label:'Autres', items:[] });
+    items.forEach(function(it){
+      var bucket = buckets.find(function(b){ return b.name === it.stage; }) || buckets[buckets.length - 1];
+      bucket.items.push(it);
+    });
+
+    kanban.innerHTML = buckets.filter(function(b){ return b.items.length || b.name !== '__autres'; }).map(function(bucket){
+      return '<div class="kanban-col">' +
+        '<div class="kanban-col-head"><span>' + escapeHtml(bucket.label) + '</span><span class="count">' + bucket.items.length + '</span></div>' +
+        bucket.items.map(function(it){
+          var c = clientById(it.client_id);
+          var p = projectById(it.project_id);
+          return '<div class="roadmap-card plaque" data-task-card="' + it.id + '"><h4>' + escapeHtml(it.title) + '</h4>' +
+            '<span class="badge badge-neutral" style="margin-bottom:6px;">' + (c ? escapeHtml(c.company || c.name) : '—') + (p ? ' · ' + escapeHtml(p.name) : '') + '</span>' +
+            (it.deadline ? '<span class="rc-video">Deadline ' + formatDate(it.deadline) + '</span>' : '') +
+          '</div>';
+        }).join('') +
+      '</div>';
+    }).join('');
+
+    kanban.querySelectorAll('[data-task-card]').forEach(function(card){
+      card.addEventListener('click', function(){ openTaskFromRow(card.dataset.taskCard); });
     });
   }
 
   document.getElementById('tasksFilterClient').addEventListener('change', function(e){ tasksFilters.client = e.target.value; tasksFilters.project = ''; renderTasks(); });
   document.getElementById('tasksFilterProject').addEventListener('change', function(e){ tasksFilters.project = e.target.value; renderTasks(); });
   document.getElementById('tasksSort').addEventListener('change', function(e){ tasksFilters.sort = e.target.value; renderTasks(); });
+  document.querySelectorAll('#tasksViewToggle [data-tasks-view]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      tasksViewMode = btn.dataset.tasksView;
+      document.querySelectorAll('#tasksViewToggle [data-tasks-view]').forEach(function(b){ b.classList.toggle('active', b === btn); });
+      renderTasks();
+    });
+  });
 
   /* ---------------- Utils ---------------- */
   function escapeHtml(str){
