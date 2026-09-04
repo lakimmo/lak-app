@@ -109,15 +109,11 @@
   /* ============ DASHBOARD ============ */
   .briefing-card{ padding:26px 28px; margin-bottom:26px; border-left:4px solid var(--accent); }
   .briefing-card p{ font-size:16.5px; line-height:1.65; color:var(--ink); margin:12px 0 0; }
-  .project-hero{ position:relative; overflow:hidden; border-radius:var(--radius-lg); padding:26px 28px; margin-bottom:24px; background:var(--bg-panel); border:1px solid var(--line); border-left:4px solid var(--accent); box-shadow:var(--shadow-card); }
-  .project-hero > *{ position:relative; z-index:1; }
-  .project-hero-top{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
-  .project-hero h2{ font-size:clamp(20px,2.6vw,26px); margin:0 0 10px; text-wrap:balance; }
-  .project-hero p{ font-size:14px; color:var(--ink-dim); line-height:1.65; margin:0; max-width:640px; }
-  .project-hero-meta{ display:flex; gap:10px; flex-wrap:wrap; margin-top:20px; }
+  .project-bar{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:14px; }
+  .project-desc{ font-size:14px; color:var(--ink-dim); line-height:1.65; margin:0 0 26px; max-width:640px; }
+  .project-hero-meta{ display:flex; gap:10px; flex-wrap:wrap; }
   .project-hero-chip{ display:flex; align-items:center; gap:8px; background:var(--accent-soft); color:var(--accent-ink); padding:8px 14px; border-radius:var(--radius-sm); font-family:var(--font-mono); font-size:12px; }
   .project-hero-chip svg{ width:14px; height:14px; flex:none; }
-  @media (max-width:640px){ .project-hero{ padding:20px; } }
   .dash-grid{ display:grid; grid-template-columns:1.3fr 1fr; gap:20px; align-items:start; }
   @media (max-width:900px){ .dash-grid{ grid-template-columns:1fr; } }
   .dash-card{ padding:22px; margin-bottom:20px; }
@@ -313,24 +309,18 @@
       </section>
 
       <section data-page-panel="roadmap" hidden>
-        <div class="field" id="projectSelectWrap" style="max-width:340px;margin-bottom:18px;" hidden>
-          <label for="projectSelect">Projet</label>
-          <select id="projectSelect"></select>
-        </div>
-        <div class="project-hero" id="projectInfoCard" hidden>
-          <div class="grid-bg"></div>
-          <div class="project-hero-top">
-            <span class="eyebrow">Projet en cours</span>
-            <span class="badge" id="projectInfoStatus"></span>
+        <div class="project-bar" id="projectInfoCard" hidden>
+          <div class="field" style="max-width:340px;margin-bottom:0;">
+            <label for="projectSelect">Projet</label>
+            <select id="projectSelect"></select>
           </div>
-          <h2 id="projectInfoName"></h2>
-          <p id="projectInfoDesc"></p>
-          <div class="project-hero-meta">
+          <div class="project-hero-meta" id="projectInfoDatesRow" style="margin-top:0;" hidden>
             <div class="project-hero-chip" id="projectInfoStart" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg><span></span></div>
             <div class="project-hero-chip" id="projectInfoDeadline" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg><span></span></div>
           </div>
         </div>
-        <div class="page-head"><span class="eyebrow">Suivi de projet</span><h1 style="margin-top:8px;">Roadmap</h1><p>Ajoutez, déplacez ou détaillez les tâches — modifiable par vous comme par l'équipe LAK.</p></div>
+        <p class="project-desc" id="projectInfoDesc"></p>
+        <div class="page-head"><span class="eyebrow">Suivi de projet</span><h1 style="margin-top:8px;">Roadmap</h1></div>
         <p class="empty-note" id="noProjectsNote" hidden>Aucun projet pour le moment — contactez votre interlocuteur LAK.</p>
         <div class="kanban" id="kanban"></div>
       </section>
@@ -494,10 +484,10 @@
     });
 
     var projectSelect = document.getElementById('projectSelect');
-    var projectSelectWrap = document.getElementById('projectSelectWrap');
+    var projectBar = document.getElementById('projectInfoCard');
     var noProjectsNote = document.getElementById('noProjectsNote');
     if(projects.length){
-      projectSelectWrap.hidden = false;
+      projectBar.hidden = false;
       noProjectsNote.hidden = true;
       projectSelect.innerHTML = '<option value="all">Tout</option>' + projects.map(function(p){ return '<option value="' + p.id + '">' + escapeHtml(p.name) + '</option>'; }).join('');
       if(currentProjectId === null || (currentProjectId !== 'all' && !projects.some(function(p){ return p.id === currentProjectId; }))){
@@ -511,9 +501,8 @@
         renderKanban(current.roadmap_stages, itemsForCurrentProject());
       };
     } else {
-      projectSelectWrap.hidden = true;
+      projectBar.hidden = true;
       noProjectsNote.hidden = false;
-      document.getElementById('projectInfoCard').hidden = true;
     }
 
     renderKanban(data.roadmap_stages || [], itemsForCurrentProject());
@@ -543,20 +532,19 @@
     return projects.length ? projects[0].id : null;
   }
   function renderProjectInfoCard(projects){
-    var card = document.getElementById('projectInfoCard');
-    if(currentProjectId === 'all'){ card.hidden = true; return; }
-    var p = projects.find(function(x){ return x.id === currentProjectId; });
-    if(!p){ card.hidden = true; return; }
-    card.hidden = false;
-    document.getElementById('projectInfoName').textContent = p.name;
-    document.getElementById('projectInfoStatus').textContent = PROJECT_STATUS_LABELS[p.status] || p.status || '';
-    document.getElementById('projectInfoDesc').textContent = p.description || 'Aucune description pour ce projet.';
+    var datesRow = document.getElementById('projectInfoDatesRow');
+    var descEl = document.getElementById('projectInfoDesc');
+    var p = currentProjectId === 'all' ? null : projects.find(function(x){ return x.id === currentProjectId; });
+    if(!p){ datesRow.hidden = true; descEl.hidden = true; return; }
+    descEl.hidden = false;
+    descEl.textContent = p.description || 'Aucune description pour ce projet.';
     var startEl = document.getElementById('projectInfoStart');
     startEl.hidden = !p.start_date;
     if(p.start_date) startEl.querySelector('span').textContent = 'Début ' + formatDate(p.start_date);
     var deadlineEl = document.getElementById('projectInfoDeadline');
     deadlineEl.hidden = !p.target_date;
     if(p.target_date) deadlineEl.querySelector('span').textContent = 'Échéance ' + formatDate(p.target_date);
+    datesRow.hidden = !(p.start_date || p.target_date);
   }
   function renderKanban(stages, items){
     var kanban = document.getElementById('kanban');
