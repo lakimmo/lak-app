@@ -382,9 +382,12 @@
     <section class="view-panel" data-view-panel="tasks" hidden>
       <div class="view-header">
         <div><span class="eyebrow">Delivery</span><h1>Tâches</h1><p>Toutes les tâches, tous projets et clients confondus.</p></div>
-        <div class="view-toggle" id="tasksViewToggle">
-          <button class="view-toggle-btn active" data-tasks-view="kanban">Kanban</button>
-          <button class="view-toggle-btn" data-tasks-view="list">Liste</button>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="btn btn-accent btn-sm" id="newTaskBtn">+ Nouvelle tâche</button>
+          <div class="view-toggle" id="tasksViewToggle">
+            <button class="view-toggle-btn active" data-tasks-view="kanban">Kanban</button>
+            <button class="view-toggle-btn" data-tasks-view="list">Liste</button>
+          </div>
         </div>
       </div>
       <div class="funnel-fields-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:18px;">
@@ -1299,6 +1302,25 @@
     return null;
   }
 
+  function isScreenStudioLink(link){ return /^https?:\/\/screen\.studio\/share\//i.test(link || ''); }
+
+  function resolveVideoSrc(link, cb){
+    if(!link){ cb(null); return; }
+    var embedUrl = videoEmbedUrl(link);
+    if(embedUrl){ cb({ type:'iframe', src:embedUrl }); return; }
+    if(isScreenStudioLink(link)){
+      fetch(SUPABASE_URL + '/functions/v1/resolve-screenstudio-video', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'apikey':SUPABASE_ANON_KEY },
+        body: JSON.stringify({ url:link })
+      }).then(function(r){ return r.json(); }).then(function(d){
+        cb(d && d.video_url ? { type:'video', src:d.video_url } : null);
+      }).catch(function(){ cb(null); });
+      return;
+    }
+    cb(null);
+  }
+
   /* ---------------- Roadmap kanban (plein écran) ---------------- */
   function renameRoadmapStage(client, stage, newName, onDone){
     var oldName = stage.name;
@@ -1428,7 +1450,6 @@
 
   function openTaskDetail(client, itemId, newStage, onDone, defaultProjectId){
     var item = itemId ? cache.roadmap.find(function(x){ return x.id === itemId; }) : { title:'', description:'', video_link:'', video_watched:false, stage:newStage, deadline:null, completed_at:null, project_id:(defaultProjectId || null), internal_note:'', scope:null };
-    var embedUrl = videoEmbedUrl(item.video_link);
     var clientProjects = projectsForClient(client.id);
     var projectOptions = clientProjects.length
       ? clientProjects.map(function(p){ return '<option value="' + p.id + '"' + (p.id === item.project_id ? ' selected' : '') + '>' + escapeHtml(p.name) + '</option>'; }).join('')
@@ -1440,7 +1461,7 @@
     overlay.innerHTML =
       '<div class="modal-panel plaque">' +
         '<div class="modal-head"><h2 style="font-size:19px;">' + (itemId ? 'Modifier la tâche' : 'Nouvelle tâche') + '</h2><button class="modal-close" id="tdClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
-        (embedUrl ? '<iframe class="video-embed" src="' + embedUrl + '" allowfullscreen></iframe>' : (item.video_link ? '<a href="' + escapeHtml(item.video_link) + '" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="margin-bottom:16px;">Voir la vidéo ↗</a>' : '')) +
+        (item.video_link ? '<div id="tdVideoSlot" data-video-link="' + escapeHtml(item.video_link) + '"></div>' : '') +
         '<div class="onb-field-row"><div class="field"><label>Projet</label><select id="tdProject"' + (clientProjects.length ? '' : ' disabled') + '>' + projectOptions + '</select></div><div class="field"><label>Étape</label><select id="tdStage">' + stageOptions + '</select></div></div>' +
         '<div class="field"><label>Ampleur</label><select id="tdScope"><option value=""' + (item.scope ? '' : ' selected') + '>—</option>' + Object.keys(SCOPE_LABELS).map(function(s){ return '<option value="' + s + '"' + (s === item.scope ? ' selected' : '') + '>' + SCOPE_LABELS[s] + '</option>'; }).join('') + '</select></div>' +
         '<div class="field"><label>Titre</label><input type="text" id="tdTitle" value="' + escapeHtml(item.title) + '"></div>' +
@@ -1457,6 +1478,19 @@
     document.body.appendChild(overlay);
     overlay.addEventListener('click', function(e){ if(e.target === overlay) document.body.removeChild(overlay); });
     overlay.querySelector('#tdClose').addEventListener('click', function(){ document.body.removeChild(overlay); });
+    var tdVideoSlot = overlay.querySelector('#tdVideoSlot');
+    if(tdVideoSlot){
+      resolveVideoSrc(tdVideoSlot.dataset.videoLink, function(result){
+        if(!tdVideoSlot.parentNode) return;
+        if(!result){
+          tdVideoSlot.outerHTML = '<a href="' + escapeHtml(tdVideoSlot.dataset.videoLink) + '" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="margin-bottom:16px;">Voir la vidéo ↗</a>';
+          return;
+        }
+        tdVideoSlot.outerHTML = result.type === 'video'
+          ? '<video class="video-embed" src="' + escapeHtml(result.src) + '" controls></video>'
+          : '<iframe class="video-embed" src="' + escapeHtml(result.src) + '" allowfullscreen></iframe>';
+      });
+    }
 
     var currentItemId = itemId;
 
@@ -1879,13 +1913,13 @@
     });
 
     kanban.innerHTML = buckets.filter(function(b){ return b.items.length || b.name !== '__autres'; }).map(function(bucket){
-      return '<div class="kanban-col">' +
+      return '<div class="kanban-col" data-col-name="' + bucket.name + '">' +
         '<div class="kanban-col-head"><span>' + escapeHtml(bucket.label) + '</span><span class="count">' + bucket.items.length + '</span></div>' +
         bucket.items.map(function(it){
           var c = clientById(it.client_id);
           var p = projectById(it.project_id);
           var showProjectTag = !!tasksFilters.client && !tasksFilters.project;
-          return '<div class="roadmap-card plaque" data-task-card="' + it.id + '"><h4>' + escapeHtml(it.title) + '</h4>' +
+          return '<div class="roadmap-card plaque" draggable="true" data-task-card="' + it.id + '"><h4>' + escapeHtml(it.title) + '</h4>' +
             '<div style="font-size:12px;color:var(--ink-faint);margin-bottom:6px;">' + (c ? escapeHtml(c.company || c.name) : '—') + '</div>' +
             (showProjectTag && p ? '<span class="badge badge-neutral" style="margin-bottom:6px;text-transform:none;">' + escapeHtml(p.name) + '</span>' : '') +
             deadlineChipHtml(it.deadline, it.completed_at) +
@@ -1896,8 +1930,63 @@
 
     kanban.querySelectorAll('[data-task-card]').forEach(function(card){
       card.addEventListener('click', function(){ openTaskFromRow(card.dataset.taskCard); });
+      card.addEventListener('dragstart', function(e){ e.dataTransfer.setData('text/plain', card.dataset.taskCard); card.classList.add('dragging'); });
+      card.addEventListener('dragend', function(){ card.classList.remove('dragging'); });
+    });
+    kanban.querySelectorAll('.kanban-col').forEach(function(col){
+      if(col.dataset.colName === '__autres') return;
+      col.addEventListener('dragover', function(e){ e.preventDefault(); col.classList.add('drag-over'); });
+      col.addEventListener('dragleave', function(){ col.classList.remove('drag-over'); });
+      col.addEventListener('drop', function(e){
+        e.preventDefault(); col.classList.remove('drag-over');
+        var id = e.dataTransfer.getData('text/plain');
+        if(!id) return;
+        var draggedItem = cache.roadmap.find(function(x){ return x.id === id; });
+        var newStage = col.dataset.colName;
+        var patch = { stage: newStage };
+        if(newStage === 'termine' && draggedItem && !draggedItem.completed_at){
+          patch.completed_at = new Date().toISOString().slice(0,10);
+        }
+        apiFetch('/rest/v1/roadmap_items?id=eq.' + id, { method:'PATCH', body: JSON.stringify(patch) })
+          .then(function(r){ if(!r.ok) throw new Error();
+            if(draggedItem) Object.assign(draggedItem, patch);
+            renderTasks();
+          }).catch(function(){ showToast('Erreur : étape non enregistrée.'); });
+      });
     });
   }
+
+  function openNewTaskPicker(){
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-panel plaque" style="max-width:420px;">' +
+        '<div class="modal-head"><h2 style="font-size:19px;">Nouvelle tâche</h2><button class="modal-close" id="ntpClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
+        '<div class="field"><label>Client</label><select id="ntpClient"><option value="">Choisir un client</option>' + cache.clients.map(function(c){ return '<option value="' + c.id + '">' + escapeHtml(c.company || c.name) + '</option>'; }).join('') + '</select></div>' +
+        '<div class="field"><label>Projet (facultatif)</label><select id="ntpProject" disabled><option value="">—</option></select></div>' +
+        '<div class="detail-actions"><button class="btn btn-accent btn-sm" id="ntpContinue">Continuer</button></div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e){ if(e.target === overlay) document.body.removeChild(overlay); });
+    overlay.querySelector('#ntpClose').addEventListener('click', function(){ document.body.removeChild(overlay); });
+    var clientSel = overlay.querySelector('#ntpClient');
+    var projectSel = overlay.querySelector('#ntpProject');
+    clientSel.addEventListener('change', function(){
+      var clientProjects = clientSel.value ? projectsForClient(clientSel.value) : [];
+      projectSel.disabled = !clientProjects.length;
+      projectSel.innerHTML = '<option value="">—</option>' + clientProjects.map(function(p){ return '<option value="' + p.id + '">' + escapeHtml(p.name) + '</option>'; }).join('');
+    });
+    overlay.querySelector('#ntpContinue').addEventListener('click', function(){
+      var client = clientById(clientSel.value);
+      if(!client){ showToast('Choisissez un client.'); return; }
+      var projectId = projectSel.value || null;
+      var stages = roadmapStagesForClient(client.id).slice().sort(function(a,b){ return a.position - b.position; });
+      var firstStage = stages.length ? stages[0].name : 'idee';
+      document.body.removeChild(overlay);
+      openTaskDetail(client, null, firstStage, renderTasks, projectId);
+    });
+  }
+  document.getElementById('newTaskBtn').addEventListener('click', openNewTaskPicker);
 
   document.getElementById('tasksFilterClient').addEventListener('change', function(e){ tasksFilters.client = e.target.value; tasksFilters.project = ''; renderTasks(); });
   document.getElementById('tasksFilterProject').addEventListener('change', function(e){ tasksFilters.project = e.target.value; renderTasks(); });

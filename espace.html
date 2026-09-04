@@ -222,7 +222,7 @@
   .report-task h5{ font-family:var(--font-body); font-weight:800; font-size:14.5px; margin:0; }
   .report-task p{ color:var(--ink-dim); font-size:13.5px; line-height:1.55; margin:8px 0 0; }
   .report-task-video{ position:relative; margin-top:14px; border-radius:var(--radius-sm); overflow:hidden; border:1px solid var(--line-strong); cursor:pointer; }
-  .report-task-video iframe{ width:100%; aspect-ratio:16/9; border:none; display:block; background:#000; pointer-events:none; }
+  .report-task-video iframe, .report-task-video video{ width:100%; aspect-ratio:16/9; border:none; display:block; background:#000; pointer-events:none; object-fit:cover; }
   .report-task-video .rtv-expand{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(23,19,16,.18); transition:background .15s ease; }
   .report-task-video:hover .rtv-expand{ background:rgba(23,19,16,.34); }
   .report-task-video .rtv-expand svg{ width:30px; height:30px; color:#fff; filter:drop-shadow(0 2px 8px rgba(0,0,0,.5)); }
@@ -230,7 +230,7 @@
 
   .video-lightbox{ position:fixed; inset:0; background:rgba(10,8,6,.9); z-index:600; display:flex; align-items:center; justify-content:center; padding:40px 20px; }
   .video-lightbox-inner{ width:100%; max-width:920px; }
-  .video-lightbox-inner iframe{ width:100%; aspect-ratio:16/9; border:none; background:#000; display:block; }
+  .video-lightbox-inner iframe, .video-lightbox-inner video{ width:100%; aspect-ratio:16/9; border:none; background:#000; display:block; }
   .video-lightbox-close{ position:absolute; top:22px; right:22px; background:none; border:1px solid rgba(255,255,255,.4); border-radius:50%; color:#fff; width:38px; height:38px; cursor:pointer; }
   .video-lightbox-close:hover{ border-color:#fff; }
   .video-lightbox-close svg{ width:16px; height:16px; display:block; margin:auto; }
@@ -417,6 +417,25 @@
     var vimeo = link.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
     if(vimeo) return 'https://player.vimeo.com/video/' + vimeo[1];
     return null;
+  }
+
+  function isScreenStudioLink(link){ return /^https?:\/\/screen\.studio\/share\//i.test(link || ''); }
+
+  function resolveVideoSrc(link, cb){
+    if(!link){ cb(null); return; }
+    var embedUrl = videoEmbedUrl(link);
+    if(embedUrl){ cb({ type:'iframe', src:embedUrl }); return; }
+    if(isScreenStudioLink(link)){
+      fetch(SUPABASE_URL + '/functions/v1/resolve-screenstudio-video', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'apikey':SUPABASE_ANON_KEY },
+        body: JSON.stringify({ url:link })
+      }).then(function(r){ return r.json(); }).then(function(d){
+        cb(d && d.video_url ? { type:'video', src:d.video_url } : null);
+      }).catch(function(){ cb(null); });
+      return;
+    }
+    cb(null);
   }
 
   function show(id){
@@ -661,13 +680,12 @@
 
   function openTaskModal(itemId, newStage){
     var item = itemId ? current.roadmap_items.find(function(x){ return x.id === itemId; }) : { title:'', description:'', video_link:'', video_watched:false, stage:newStage, deadline:null, completed_at:null };
-    var embedUrl = videoEmbedUrl(item.video_link);
     var overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML =
       '<div class="modal-panel plaque">' +
         '<div class="modal-head"><h2 style="font-size:19px;">' + (itemId ? 'Modifier la tâche' : 'Nouvelle tâche') + '</h2><button class="modal-close" id="taskClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
-        (embedUrl ? '<iframe class="video-embed" src="' + embedUrl + '" allowfullscreen></iframe>' : (item.video_link ? '<a href="' + escapeHtml(item.video_link) + '" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="margin-bottom:16px;">Voir la vidéo ↗</a>' : '')) +
+        (item.video_link ? '<div id="taskVideoSlot" data-video-link="' + escapeHtml(item.video_link) + '"></div>' : '') +
         '<div class="field"><label>Titre</label><input type="text" id="taskTitle" value="' + escapeHtml(item.title) + '"></div>' +
         '<div class="field"><label>Description</label><textarea id="taskDesc">' + escapeHtml(item.description || '') + '</textarea></div>' +
         '<div class="field"><label>Lien vidéo (facultatif)</label><input type="text" id="taskVideo" placeholder="https://..." value="' + escapeHtml(item.video_link || '') + '"></div>' +
@@ -683,6 +701,19 @@
     document.body.appendChild(overlay);
     overlay.addEventListener('click', function(e){ if(e.target === overlay) document.body.removeChild(overlay); });
     overlay.querySelector('#taskClose').addEventListener('click', function(){ document.body.removeChild(overlay); });
+    var taskVideoSlot = overlay.querySelector('#taskVideoSlot');
+    if(taskVideoSlot){
+      resolveVideoSrc(taskVideoSlot.dataset.videoLink, function(result){
+        if(!taskVideoSlot.parentNode) return;
+        if(!result){
+          taskVideoSlot.outerHTML = '<a href="' + escapeHtml(taskVideoSlot.dataset.videoLink) + '" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="margin-bottom:16px;">Voir la vidéo ↗</a>';
+          return;
+        }
+        taskVideoSlot.outerHTML = result.type === 'video'
+          ? '<video class="video-embed" src="' + escapeHtml(result.src) + '" controls></video>'
+          : '<iframe class="video-embed" src="' + escapeHtml(result.src) + '" allowfullscreen></iframe>';
+      });
+    }
 
     var currentItemId = itemId;
 
@@ -849,13 +880,11 @@
           (tasks.length ? '<div class="report-doc-tasks">' +
             '<div class="report-doc-tasks-head"><h4>Livrables</h4><span class="count-pill">' + tasks.length + '</span></div>' +
             '<div class="report-task-grid">' +
-            tasks.map(function(t){
-              var embedUrl = videoEmbedUrl(t.video_link);
+            tasks.map(function(t, idx){
               return '<div class="report-task plaque">' +
                 '<div class="report-task-head"><span class="rt-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></span><h5>' + escapeHtml(t.title) + '</h5></div>' +
                 (t.description ? '<p>' + escapeHtml(t.description) + '</p>' : '') +
-                (embedUrl ? '<div class="report-task-video" data-embed="' + escapeHtml(embedUrl) + '"><iframe src="' + embedUrl + '" tabindex="-1"></iframe><div class="rtv-expand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></div></div>' :
-                  (t.video_link ? '<a class="report-task-link" href="' + escapeHtml(t.video_link) + '" target="_blank" rel="noopener">Voir la vidéo ↗</a>' : '')) +
+                (t.video_link ? '<div class="report-task-video-slot" id="rtvSlot' + idx + '" data-video-link="' + escapeHtml(t.video_link) + '"></div>' : '') +
               '</div>';
             }).join('') +
             '</div>' +
@@ -866,17 +895,34 @@
     document.body.appendChild(overlay);
     overlay.addEventListener('click', function(e){ if(e.target === overlay) document.body.removeChild(overlay); });
     overlay.querySelector('#repDocClose').addEventListener('click', function(){ document.body.removeChild(overlay); });
-    overlay.querySelectorAll('.report-task-video').forEach(function(v){
-      v.addEventListener('click', function(){ openVideoLightbox(v.dataset.embed); });
+    overlay.addEventListener('click', function(e){
+      var v = e.target.closest('.report-task-video');
+      if(v) openVideoLightbox(v.dataset.embedType, v.dataset.embedSrc);
+    });
+    overlay.querySelectorAll('.report-task-video-slot').forEach(function(slot){
+      resolveVideoSrc(slot.dataset.videoLink, function(result){
+        if(!slot.parentNode) return;
+        if(!result){
+          slot.outerHTML = '<a class="report-task-link" href="' + escapeHtml(slot.dataset.videoLink) + '" target="_blank" rel="noopener">Voir la vidéo ↗</a>';
+          return;
+        }
+        var mediaHtml = result.type === 'video'
+          ? '<video src="' + escapeHtml(result.src) + '" muted playsinline preload="metadata" tabindex="-1"></video>'
+          : '<iframe src="' + escapeHtml(result.src) + '" tabindex="-1"></iframe>';
+        slot.outerHTML = '<div class="report-task-video" data-embed-type="' + result.type + '" data-embed-src="' + escapeHtml(result.src) + '">' + mediaHtml + '<div class="rtv-expand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></div></div>';
+      });
     });
   }
 
-  function openVideoLightbox(embedUrl){
+  function openVideoLightbox(type, src){
     var box = document.createElement('div');
     box.className = 'video-lightbox';
+    var mediaHtml = type === 'video'
+      ? '<video src="' + src + '" controls autoplay playsinline></video>'
+      : '<iframe src="' + src + '" allow="autoplay; fullscreen" allowfullscreen></iframe>';
     box.innerHTML =
       '<button class="video-lightbox-close" id="vlClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button>' +
-      '<div class="video-lightbox-inner"><iframe src="' + embedUrl + '" allow="autoplay; fullscreen" allowfullscreen></iframe></div>';
+      '<div class="video-lightbox-inner">' + mediaHtml + '</div>';
     document.body.appendChild(box);
     box.addEventListener('click', function(e){ if(e.target === box) document.body.removeChild(box); });
     box.querySelector('#vlClose').addEventListener('click', function(){ document.body.removeChild(box); });
