@@ -380,9 +380,9 @@
         <div class="field" style="margin-bottom:0;"><label>Projet</label><select id="tasksFilterProject"><option value="">Tous les projets</option></select></div>
         <div class="field" style="margin-bottom:0;"><label>Trier par</label><select id="tasksSort"><option value="deadline">Deadline</option><option value="created">Plus récentes</option></select></div>
       </div>
-      <div class="onb-field-row" id="tasksDeadlineRangeRow" style="grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;" hidden>
-        <div class="field" style="margin-bottom:0;"><label>Deadline entre le</label><input type="date" id="tasksDateFrom"></div>
-        <div class="field" style="margin-bottom:0;"><label>Et le</label><input type="date" id="tasksDateTo"></div>
+      <div class="field" id="tasksDeadlineRangeRow" style="margin-bottom:18px;" hidden>
+        <label>Deadline</label>
+        <div style="display:flex;align-items:center;gap:8px;font-size:13.5px;">Dans les <input type="number" id="tasksDeadlineDays" min="1" value="7" style="width:64px;"> jours</div>
       </div>
       <div class="kanban" id="tasksKanban"></div>
       <div class="table-wrap plaque" id="tasksListWrap" style="padding:6px 0;" hidden>
@@ -603,7 +603,7 @@
     upcomingTasksEl.innerHTML = upcomingTasks.length ? upcomingTasks.map(function(it){
       var c = clientById(it.client_id);
       var p = projectById(it.project_id);
-      return '<div class="mini-row" data-overview-task="' + it.id + '" style="cursor:pointer;"><div><div class="m-title">' + escapeHtml(it.title) + '</div><div class="m-sub">' + (c ? escapeHtml(c.company || c.name) : '') + (p ? ' · <span class="badge badge-neutral" style="margin-left:2px;">' + escapeHtml(p.name) + '</span>' : '') + '</div></div><span class="badge badge-neutral">' + formatDate(it.deadline) + '</span></div>';
+      return '<div class="mini-row" data-overview-task="' + it.id + '" style="cursor:pointer;"><div><div class="m-title">' + escapeHtml(it.title) + '</div><div class="m-sub">' + (c ? escapeHtml(c.company || c.name) : '') + (p ? ' · <span class="badge badge-neutral" style="margin-left:2px;text-transform:none;">' + escapeHtml(p.name) + '</span>' : '') + '</div></div><span class="badge badge-neutral">' + formatDate(it.deadline) + '</span></div>';
     }).join('') : '<p class="empty-note">Aucune tâche à venir.</p>';
     upcomingTasksEl.querySelectorAll('[data-overview-task]').forEach(function(row){
       row.addEventListener('click', function(){ openTaskFromRow(row.dataset.overviewTask); });
@@ -1226,7 +1226,7 @@
           colItems.map(function(it){
             var itProject = projectById(it.project_id);
             return '<div class="roadmap-card plaque" draggable="true" data-item-id="' + it.id + '"><h4>' + escapeHtml(it.title) + '</h4>' +
-              (itProject ? '<span class="badge badge-neutral" style="margin-bottom:6px;">' + escapeHtml(itProject.name) + '</span>' : '') +
+              (itProject ? '<span class="badge badge-neutral" style="margin-bottom:6px;text-transform:none;">' + escapeHtml(itProject.name) + '</span>' : '') +
               (it.video_link ? '<span class="rc-video"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7Z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>' + (it.video_watched ? 'Vidéo vue' : 'Vidéo à voir') + '</span>' : '') +
               (it.completed_at ? '<span class="rc-video" style="color:var(--success);">Fait le ' + formatDate(it.completed_at) + '</span>' : (it.deadline ? '<span class="rc-video">Deadline ' + formatDate(it.deadline) + '</span>' : '')) +
             '</div>';
@@ -1615,7 +1615,7 @@
   });
 
   /* ---------------- Tâches (centralisé) ---------------- */
-  var tasksFilters = { client:'', project:'', sort:'deadline', dateFrom:'', dateTo:'' };
+  var tasksFilters = { client:'', project:'', sort:'deadline', days:null };
   var tasksViewMode = 'kanban';
 
   function populateTasksFilters(){
@@ -1638,10 +1638,11 @@
     var items = cache.roadmap.filter(function(it){
       if(tasksFilters.client && it.client_id !== tasksFilters.client) return false;
       if(tasksFilters.project && it.project_id !== tasksFilters.project) return false;
-      if(tasksFilters.sort === 'deadline' && (tasksFilters.dateFrom || tasksFilters.dateTo)){
+      if(tasksFilters.sort === 'deadline' && tasksFilters.days){
         if(!it.deadline) return false;
-        if(tasksFilters.dateFrom && it.deadline < tasksFilters.dateFrom) return false;
-        if(tasksFilters.dateTo && it.deadline > tasksFilters.dateTo) return false;
+        var todayStr = new Date().toISOString().slice(0,10);
+        var limitStr = new Date(Date.now() + tasksFilters.days * 86400000).toISOString().slice(0,10);
+        if(it.deadline < todayStr || it.deadline > limitStr) return false;
       }
       return true;
     }).slice();
@@ -1713,7 +1714,7 @@
           var showProjectTag = !!tasksFilters.client && !tasksFilters.project;
           return '<div class="roadmap-card plaque" data-task-card="' + it.id + '"><h4>' + escapeHtml(it.title) + '</h4>' +
             '<div style="font-size:12px;color:var(--ink-faint);margin-bottom:6px;">' + (c ? escapeHtml(c.company || c.name) : '—') + '</div>' +
-            (showProjectTag && p ? '<span class="badge badge-neutral" style="margin-bottom:6px;">' + escapeHtml(p.name) + '</span>' : '') +
+            (showProjectTag && p ? '<span class="badge badge-neutral" style="margin-bottom:6px;text-transform:none;">' + escapeHtml(p.name) + '</span>' : '') +
             (it.deadline ? '<span class="rc-video">Deadline ' + formatDate(it.deadline) + '</span>' : '') +
           '</div>';
         }).join('') +
@@ -1728,8 +1729,7 @@
   document.getElementById('tasksFilterClient').addEventListener('change', function(e){ tasksFilters.client = e.target.value; tasksFilters.project = ''; renderTasks(); });
   document.getElementById('tasksFilterProject').addEventListener('change', function(e){ tasksFilters.project = e.target.value; renderTasks(); });
   document.getElementById('tasksSort').addEventListener('change', function(e){ tasksFilters.sort = e.target.value; renderTasks(); });
-  document.getElementById('tasksDateFrom').addEventListener('change', function(e){ tasksFilters.dateFrom = e.target.value; renderTasks(); });
-  document.getElementById('tasksDateTo').addEventListener('change', function(e){ tasksFilters.dateTo = e.target.value; renderTasks(); });
+  document.getElementById('tasksDeadlineDays').addEventListener('change', function(e){ tasksFilters.days = e.target.value ? parseInt(e.target.value, 10) : null; renderTasks(); });
   document.querySelectorAll('#tasksViewToggle [data-tasks-view]').forEach(function(btn){
     btn.addEventListener('click', function(){
       tasksViewMode = btn.dataset.tasksView;
