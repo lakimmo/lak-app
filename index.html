@@ -1383,10 +1383,15 @@
           e.preventDefault(); col.classList.remove('drag-over');
           var id = e.dataTransfer.getData('text/plain');
           if(!id) return;
-          apiFetch('/rest/v1/roadmap_items?id=eq.' + id, { method:'PATCH', body: JSON.stringify({ stage: col.dataset.colStage }) })
+          var draggedItem = cache.roadmap.find(function(x){ return x.id === id; });
+          var newStage = col.dataset.colStage;
+          var patch = { stage: newStage };
+          if(newStage === 'termine' && draggedItem && !draggedItem.completed_at){
+            patch.completed_at = new Date().toISOString().slice(0,10);
+          }
+          apiFetch('/rest/v1/roadmap_items?id=eq.' + id, { method:'PATCH', body: JSON.stringify(patch) })
             .then(function(r){ if(!r.ok) throw new Error();
-              var item = cache.roadmap.find(function(x){ return x.id === id; });
-              if(item) item.stage = col.dataset.colStage;
+              if(draggedItem) Object.assign(draggedItem, patch);
               renderRmKanban();
             }).catch(function(){ showToast('Erreur : étape non enregistrée.'); });
         });
@@ -1513,7 +1518,13 @@
       }
     }
     overlay.querySelector('#tdProject').addEventListener('change', saveTask);
-    overlay.querySelector('#tdStage').addEventListener('change', saveTask);
+    overlay.querySelector('#tdStage').addEventListener('change', function(e){
+      var completedEl = overlay.querySelector('#tdCompleted');
+      if(e.target.value === 'termine' && !completedEl.value){
+        completedEl.value = new Date().toISOString().slice(0,10);
+      }
+      saveTask();
+    });
     overlay.querySelector('#tdScope').addEventListener('change', saveTask);
     overlay.querySelector('#tdTitle').addEventListener('blur', saveTask);
     overlay.querySelector('#tdDesc').addEventListener('blur', saveTask);

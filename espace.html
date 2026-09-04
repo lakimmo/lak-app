@@ -616,8 +616,13 @@
         if(!id) return;
         var item = current.roadmap_items.find(function(x){ return x.id === id; });
         if(!item) return;
-        rpc('upsert_roadmap_item', { p_token:token, p_item_id:id, p_stage:col.dataset.colStage, p_title:item.title, p_description:item.description, p_video_link:item.video_link, p_deadline:item.deadline || null, p_completed_at:item.completed_at || null, p_project_id:item.project_id || null })
-          .then(function(){ item.stage = col.dataset.colStage; renderKanban(current.roadmap_stages, itemsForCurrentProject()); });
+        var newStage = col.dataset.colStage;
+        var completedAt = item.completed_at || null;
+        if(newStage === 'termine' && !completedAt){
+          completedAt = new Date().toISOString().slice(0,10);
+        }
+        rpc('upsert_roadmap_item', { p_token:token, p_item_id:id, p_stage:newStage, p_title:item.title, p_description:item.description, p_video_link:item.video_link, p_deadline:item.deadline || null, p_completed_at:completedAt, p_project_id:item.project_id || null })
+          .then(function(){ item.stage = newStage; item.completed_at = completedAt; renderKanban(current.roadmap_stages, itemsForCurrentProject()); });
       });
     });
     kanban.querySelectorAll('[data-del-stage]').forEach(function(btn){
