@@ -430,6 +430,9 @@
   var ONBOARDING_LINK_BASE = IS_LOCAL ? (location.origin + '/onboarding.html') : 'https://app.lak-agency.com/onboarding.html';
   var ESPACE_LINK_BASE = IS_LOCAL ? (location.origin + '/espace.html') : 'https://app.lak-agency.com/espace.html';
   var ROADMAP_STAGE_LABELS = { idee:'Idée', a_faire:'À faire', en_cours:'En cours', termine:'Terminé' };
+  var SCOPE_LABELS = { grosse:'Grosse évolution', moyenne:'Moyenne évolution', petite:'Petite évolution' };
+  var SCOPE_ORDER = { grosse:0, moyenne:1, petite:2 };
+  function scopeRank(s){ return s in SCOPE_ORDER ? SCOPE_ORDER[s] : 3; }
   var PROJECT_STATUS_LABELS = { cadrage:'Cadrage', en_cours:'En cours', en_pause:'En pause', termine:'Terminé' };
   var TEAM_LABELS = { solo:'Solo', petite:'2-10 pers.', moyenne:'11-50 pers.', grande:'50+ pers.' };
   var PRIORITY_LABELS = { reponse:'SAV / support', leads:'Qualification leads', saisie:'Saisie admin', planning:'Planning', autre_tache:'Autre' };
@@ -1419,7 +1422,7 @@
   }
 
   function openTaskDetail(client, itemId, newStage, onDone, defaultProjectId){
-    var item = itemId ? cache.roadmap.find(function(x){ return x.id === itemId; }) : { title:'', description:'', video_link:'', video_watched:false, stage:newStage, deadline:null, completed_at:null, project_id:(defaultProjectId || null), internal_note:'' };
+    var item = itemId ? cache.roadmap.find(function(x){ return x.id === itemId; }) : { title:'', description:'', video_link:'', video_watched:false, stage:newStage, deadline:null, completed_at:null, project_id:(defaultProjectId || null), internal_note:'', scope:null };
     var embedUrl = videoEmbedUrl(item.video_link);
     var clientProjects = projectsForClient(client.id);
     var projectOptions = clientProjects.length
@@ -1434,6 +1437,7 @@
         '<div class="modal-head"><h2 style="font-size:19px;">' + (itemId ? 'Modifier la tâche' : 'Nouvelle tâche') + '</h2><button class="modal-close" id="tdClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
         (embedUrl ? '<iframe class="video-embed" src="' + embedUrl + '" allowfullscreen></iframe>' : (item.video_link ? '<a href="' + escapeHtml(item.video_link) + '" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="margin-bottom:16px;">Voir la vidéo ↗</a>' : '')) +
         '<div class="onb-field-row"><div class="field"><label>Projet</label><select id="tdProject"' + (clientProjects.length ? '' : ' disabled') + '>' + projectOptions + '</select></div><div class="field"><label>Étape</label><select id="tdStage">' + stageOptions + '</select></div></div>' +
+        '<div class="field"><label>Ampleur</label><select id="tdScope"><option value=""' + (item.scope ? '' : ' selected') + '>—</option>' + Object.keys(SCOPE_LABELS).map(function(s){ return '<option value="' + s + '"' + (s === item.scope ? ' selected' : '') + '>' + SCOPE_LABELS[s] + '</option>'; }).join('') + '</select></div>' +
         '<div class="field"><label>Titre</label><input type="text" id="tdTitle" value="' + escapeHtml(item.title) + '"></div>' +
         '<div class="field"><label>Description <span style="text-transform:none;font-weight:400;">(visible par le client)</span></label><textarea id="tdDesc">' + escapeHtml(item.description || '') + '</textarea></div>' +
         '<div class="field"><label>Lien vidéo (facultatif)</label><input type="text" id="tdVideo" placeholder="https://..." value="' + escapeHtml(item.video_link || '') + '"></div>' +
@@ -1475,9 +1479,10 @@
       var completedAt = overlay.querySelector('#tdCompleted').value || null;
       var projectId = overlay.querySelector('#tdProject').value || null;
       var internalNote = overlay.querySelector('#tdNote').value;
+      var scope = overlay.querySelector('#tdScope').value || null;
       var stageEl = overlay.querySelector('#tdStage');
       var stage = stageEl ? stageEl.value : (currentItemId ? item.stage : newStage);
-      var payload = { title:title, description:description, video_link: videoLink || null, deadline:deadline, completed_at:completedAt, project_id:projectId, internal_note:internalNote, stage:stage };
+      var payload = { title:title, description:description, video_link: videoLink || null, deadline:deadline, completed_at:completedAt, project_id:projectId, internal_note:internalNote, stage:stage, scope:scope };
       if(watchedEl) payload.video_watched = watchedEl.checked;
 
       if(currentItemId){
@@ -1509,6 +1514,7 @@
     }
     overlay.querySelector('#tdProject').addEventListener('change', saveTask);
     overlay.querySelector('#tdStage').addEventListener('change', saveTask);
+    overlay.querySelector('#tdScope').addEventListener('change', saveTask);
     overlay.querySelector('#tdTitle').addEventListener('blur', saveTask);
     overlay.querySelector('#tdDesc').addEventListener('blur', saveTask);
     overlay.querySelector('#tdVideo').addEventListener('blur', saveTask);
@@ -1521,7 +1527,7 @@
 
   /* ---------------- Génération de rapport (IA) ---------------- */
   function openReportModal(client, parentOverlay){
-    var items = roadmapForClient(client.id);
+    var items = roadmapForClient(client.id).slice().sort(function(a, b){ return scopeRank(a.scope) - scopeRank(b.scope); });
     var today = new Date().toISOString().slice(0,10);
 
     var overlay = document.createElement('div');
@@ -1534,7 +1540,7 @@
           '<p style="font-size:13.5px;color:var(--ink-dim);margin:0 0 6px;">Tâches avec une deadline dans la période — présélectionnées automatiquement (modifiable).</p>' +
           '<div id="repTaskList">' +
             (items.length ? items.map(function(it){
-              return '<label class="report-task-pick"><input type="checkbox" data-rep-task="' + it.id + '"><span><span class="rt-title">' + escapeHtml(it.title) + '</span><span class="rt-sub"> — ' + escapeHtml(roadmapStageLabel(it.stage)) + (it.deadline ? ' · échéance ' + formatDate(it.deadline) : '') + (it.video_link ? (it.video_watched ? ' · vidéo vue' : ' · vidéo non vue') : '') + '</span></span></label>';
+              return '<label class="report-task-pick"><input type="checkbox" data-rep-task="' + it.id + '"><span><span class="rt-title">' + escapeHtml(it.title) + '</span><span class="rt-sub">' + (it.scope ? ' — ' + escapeHtml(SCOPE_LABELS[it.scope]) : '') + ' — ' + escapeHtml(roadmapStageLabel(it.stage)) + (it.deadline ? ' · échéance ' + formatDate(it.deadline) : '') + (it.video_link ? (it.video_watched ? ' · vidéo vue' : ' · vidéo non vue') : '') + '</span></span></label>';
             }).join('') : '<p class="empty-note">Aucune tâche dans la roadmap.</p>') +
           '</div>' +
           '<div class="field" style="margin-top:18px;"><label>Bilan rapide</label><textarea id="repNotes" placeholder="Ce qui a été fait dans l\'ensemble sur la période, et ce qui est prévu prochainement. L\'IA s\'en sert pour rédiger l\'intro du rapport." style="min-height:110px;"></textarea></div>' +
@@ -1567,7 +1573,7 @@
     overlay.querySelector('#repGenerateBtn').addEventListener('click', function(){
       var selected = Array.prototype.slice.call(overlay.querySelectorAll('[data-rep-task]:checked')).map(function(cb){
         return items.find(function(it){ return it.id === cb.dataset.repTask; });
-      }).filter(Boolean);
+      }).filter(Boolean).sort(function(a, b){ return scopeRank(a.scope) - scopeRank(b.scope); });
       var notes = overlay.querySelector('#repNotes').value.trim();
       if(!notes){ showToast('Rédigez un bilan rapide avant de générer.'); return; }
       snapshot = selected.map(function(it){ return { title:it.title, description:it.description, video_link:it.video_link || null }; });
