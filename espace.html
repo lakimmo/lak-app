@@ -215,6 +215,9 @@
   .report-doc-tasks-head h4{ font-family:var(--font-mono); font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-dim); margin:0; }
   .report-doc-tasks-head .count-pill{ background:var(--ink); color:#fff; border-radius:999px; padding:2px 9px; font-size:10.5px; font-family:var(--font-mono); flex:none; }
   .report-task-grid{ display:flex; flex-direction:column; gap:14px; }
+  .report-scope-group{ display:flex; flex-direction:column; gap:14px; margin-bottom:22px; }
+  .report-scope-group:last-child{ margin-bottom:0; }
+  .report-scope-label{ font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--accent-ink); margin:0; }
   .report-task{ padding:18px 20px; }
   .report-task-head{ display:flex; align-items:center; gap:10px; margin-bottom:2px; }
   .report-task-head .rt-check{ width:20px;height:20px; border-radius:50%; background:var(--success); color:#fff; display:flex; align-items:center; justify-content:center; flex:none; }
@@ -860,6 +863,17 @@
     });
   }
 
+  var REPORT_SCOPE_GROUP_LABELS = { grosse:'Grosses évolutions', moyenne:'Évolutions moyennes', petite:'Petites évolutions' };
+  var REPORT_SCOPE_ORDER = ['grosse', 'moyenne', 'petite'];
+
+  function reportTaskCardHtml(t, idx){
+    return '<div class="report-task plaque">' +
+      '<div class="report-task-head"><span class="rt-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></span><h5>' + escapeHtml(t.title) + '</h5></div>' +
+      (t.description ? '<p>' + escapeHtml(t.description) + '</p>' : '') +
+      (t.video_link ? '<div class="report-task-video-slot" id="rtvSlot' + idx + '" data-video-link="' + escapeHtml(t.video_link) + '"></div>' : '') +
+    '</div>';
+  }
+
   function openReportDoc(id){
     var r = reportsCache.find(function(x){ return x.id === id; });
     if(!r) return;
@@ -867,6 +881,21 @@
     var paragraphs = (r.content || '').split(/\n\s*\n/).filter(Boolean);
     var periodHtml = (r.period_start && r.period_end) ?
       '<div class="report-doc-period"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="1"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>Du ' + formatDate(r.period_start) + ' au ' + formatDate(r.period_end) + '</div>' : '';
+
+    var scopeGroups = REPORT_SCOPE_ORDER.map(function(s){ return { label: REPORT_SCOPE_GROUP_LABELS[s], items: tasks.filter(function(t){ return t.scope === s; }) }; }).filter(function(g){ return g.items.length; });
+    var unscoped = tasks.filter(function(t){ return !t.scope; });
+    if(unscoped.length) scopeGroups.push({ label:null, items:unscoped });
+
+    var runningIdx = 0;
+    var tasksGridHtml;
+    if(scopeGroups.length > 1){
+      tasksGridHtml = scopeGroups.map(function(g){
+        var cardsHtml = g.items.map(function(t){ var html = reportTaskCardHtml(t, runningIdx); runningIdx++; return html; }).join('');
+        return '<div class="report-scope-group">' + (g.label ? '<p class="report-scope-label">' + escapeHtml(g.label) + '</p>' : '') + cardsHtml + '</div>';
+      }).join('');
+    } else {
+      tasksGridHtml = tasks.map(function(t){ var html = reportTaskCardHtml(t, runningIdx); runningIdx++; return html; }).join('');
+    }
 
     var overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
@@ -879,15 +908,7 @@
           '<div class="report-doc-body">' + paragraphs.map(function(p){ return '<p>' + escapeHtml(p) + '</p>'; }).join('') + '</div>' +
           (tasks.length ? '<div class="report-doc-tasks">' +
             '<div class="report-doc-tasks-head"><h4>Livrables</h4><span class="count-pill">' + tasks.length + '</span></div>' +
-            '<div class="report-task-grid">' +
-            tasks.map(function(t, idx){
-              return '<div class="report-task plaque">' +
-                '<div class="report-task-head"><span class="rt-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></span><h5>' + escapeHtml(t.title) + '</h5></div>' +
-                (t.description ? '<p>' + escapeHtml(t.description) + '</p>' : '') +
-                (t.video_link ? '<div class="report-task-video-slot" id="rtvSlot' + idx + '" data-video-link="' + escapeHtml(t.video_link) + '"></div>' : '') +
-              '</div>';
-            }).join('') +
-            '</div>' +
+            '<div class="report-task-grid">' + tasksGridHtml + '</div>' +
           '</div>' : '') +
           '<div class="report-doc-footer"><div class="rdf-mark"><img src="assets/logo-wordmark.png" alt="LAK"></div><div class="rdf-note">Rapport généré le ' + formatDate(r.created_at) + '</div></div>' +
         '</div>' +

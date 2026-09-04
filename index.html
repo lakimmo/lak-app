@@ -1621,7 +1621,7 @@
       }).filter(Boolean).sort(function(a, b){ return scopeRank(a.scope) - scopeRank(b.scope); });
       var notes = overlay.querySelector('#repNotes').value.trim();
       if(!notes){ showToast('Rédigez un bilan rapide avant de générer.'); return; }
-      snapshot = selected.map(function(it){ return { title:it.title, description:it.description, video_link:it.video_link || null }; });
+      snapshot = selected.map(function(it){ return { title:it.title, description:it.description, video_link:it.video_link || null, scope:it.scope || null }; });
       var btn = overlay.querySelector('#repGenerateBtn');
       btn.disabled = true; btn.textContent = 'Génération en cours…';
       apiFetch('/functions/v1/generate-report', {
