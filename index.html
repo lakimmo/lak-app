@@ -388,9 +388,13 @@
         <div class="field" style="margin-bottom:0;"><label>Projet</label><select id="tasksFilterProject"><option value="">Tous les projets</option></select></div>
         <div class="field" style="margin-bottom:0;"><label>Trier par</label><select id="tasksSort"><option value="deadline">Deadline</option><option value="created">Plus récentes</option></select></div>
       </div>
-      <div class="field" id="tasksDeadlineRangeRow" style="margin-bottom:18px;" hidden>
-        <label>Deadline</label>
-        <div style="display:flex;align-items:center;gap:8px;font-size:13.5px;">Dans les <input type="number" id="tasksDeadlineDays" min="1" value="7" style="width:64px;"> jours</div>
+      <div class="field" id="tasksDeadlineRangeRow" style="max-width:200px;margin-bottom:18px;" hidden>
+        <select id="tasksDeadlineDays">
+          <option value="3">3 jours</option>
+          <option value="7" selected>7 jours</option>
+          <option value="15">15 jours</option>
+          <option value="30">1 mois</option>
+        </select>
       </div>
       <div class="kanban" id="tasksKanban"></div>
       <div class="table-wrap plaque" id="tasksListWrap" style="padding:6px 0;" hidden>
@@ -1623,7 +1627,7 @@
   });
 
   /* ---------------- Tâches (centralisé) ---------------- */
-  var tasksFilters = { client:'', project:'', sort:'deadline', days:null };
+  var tasksFilters = { client:'', project:'', sort:'deadline', days:7 };
   var tasksViewMode = 'kanban';
 
   function populateTasksFilters(){
