@@ -383,12 +383,12 @@
           <button class="view-toggle-btn" data-tasks-view="list">Liste</button>
         </div>
       </div>
-      <div class="funnel-fields-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:18px;">
+      <div class="funnel-fields-row" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;">
         <div class="field" style="margin-bottom:0;"><label>Client</label><select id="tasksFilterClient"><option value="">Tous les clients</option></select></div>
         <div class="field" style="margin-bottom:0;"><label>Projet</label><select id="tasksFilterProject"><option value="">Tous les projets</option></select></div>
-        <div class="field" style="margin-bottom:0;"><label>Trier par</label><select id="tasksSort"><option value="deadline">Deadline</option><option value="created">Plus récentes</option></select></div>
       </div>
-      <div class="field" id="tasksDeadlineRangeRow" style="max-width:200px;margin-bottom:18px;" hidden>
+      <div class="field" id="tasksDeadlineRangeRow" style="max-width:200px;margin-bottom:18px;">
+        <label>Deadline</label>
         <select id="tasksDeadlineDays">
           <option value="3">3 jours</option>
           <option value="7" selected>7 jours</option>
@@ -1627,7 +1627,7 @@
   });
 
   /* ---------------- Tâches (centralisé) ---------------- */
-  var tasksFilters = { client:'', project:'', sort:'deadline', days:7 };
+  var tasksFilters = { client:'', project:'', days:7 };
   var tasksViewMode = 'kanban';
 
   function populateTasksFilters(){
@@ -1650,7 +1650,7 @@
     var items = cache.roadmap.filter(function(it){
       if(tasksFilters.client && it.client_id !== tasksFilters.client) return false;
       if(tasksFilters.project && it.project_id !== tasksFilters.project) return false;
-      if(tasksFilters.sort === 'deadline' && tasksFilters.days){
+      if(tasksFilters.days){
         if(!it.deadline) return false;
         var todayStr = new Date().toISOString().slice(0,10);
         var limitStr = new Date(Date.now() + tasksFilters.days * 86400000).toISOString().slice(0,10);
@@ -1660,9 +1660,6 @@
     }).slice();
 
     items.sort(function(a, b){
-      if(tasksFilters.sort === 'created'){
-        return (b.created_at || '').localeCompare(a.created_at || '');
-      }
       if(!a.deadline && !b.deadline) return 0;
       if(!a.deadline) return 1;
       if(!b.deadline) return -1;
@@ -1680,7 +1677,6 @@
 
   function renderTasks(){
     populateTasksFilters();
-    document.getElementById('tasksDeadlineRangeRow').hidden = (tasksFilters.sort !== 'deadline');
     document.getElementById('tasksKanban').hidden = (tasksViewMode !== 'kanban');
     document.getElementById('tasksListWrap').hidden = (tasksViewMode !== 'list');
     var items = tasksFilteredSorted();
@@ -1740,7 +1736,6 @@
 
   document.getElementById('tasksFilterClient').addEventListener('change', function(e){ tasksFilters.client = e.target.value; tasksFilters.project = ''; renderTasks(); });
   document.getElementById('tasksFilterProject').addEventListener('change', function(e){ tasksFilters.project = e.target.value; renderTasks(); });
-  document.getElementById('tasksSort').addEventListener('change', function(e){ tasksFilters.sort = e.target.value; renderTasks(); });
   document.getElementById('tasksDeadlineDays').addEventListener('change', function(e){ tasksFilters.days = e.target.value ? parseInt(e.target.value, 10) : null; renderTasks(); });
   document.querySelectorAll('#tasksViewToggle [data-tasks-view]').forEach(function(btn){
     btn.addEventListener('click', function(){
