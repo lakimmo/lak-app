@@ -149,8 +149,10 @@
   /* ============ KANBAN (Prospects) ============ */
   .kanban{ display:grid; grid-auto-flow:column; grid-auto-columns:260px; gap:16px; overflow-x:auto; padding-bottom:12px; }
   .kanban-col{ display:flex; flex-direction:column; gap:12px; }
-  .kanban-col-head{ display:flex; align-items:center; justify-content:space-between; font-family:var(--font-mono); font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-dim); padding-bottom:8px; border-bottom:1px solid var(--line-strong); }
+  .kanban-col-head{ display:flex; align-items:center; justify-content:space-between; font-family:var(--font-mono); font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-dim); padding-bottom:8px; border-bottom:1px solid var(--line-strong); gap:6px; }
   .kanban-col-head span.count{ background:var(--ink); color:#fff; border-radius:999px; padding:1px 7px; font-size:10.5px; }
+  .kanban-col-head input.kanban-col-title{ background:none; border:none; font-family:var(--font-mono); font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-dim); padding:2px 0; flex:1; min-width:0; }
+  .kanban-col-head input.kanban-col-title:focus{ outline:1px solid var(--accent); color:var(--ink); }
   .kanban-col-del{ background:none; border:none; cursor:pointer; color:var(--ink-faint); padding:0; margin-left:4px; }
   .kanban-col-del:hover{ color:var(--danger); }
   .kanban-col-del svg{ width:12px;height:12px; display:block; }
@@ -167,7 +169,6 @@
   .lead-form-details summary::before{ content:"▸"; font-size:9px; color:var(--accent); transition:transform .15s ease; display:inline-block; }
   .lead-form-details[open] summary::before{ transform:rotate(90deg); }
   .lead-card-actions{ display:flex; gap:8px; align-items:center; margin-top:4px; }
-  .lead-card-actions select{ flex:1; font-family:var(--font-mono); font-size:11px; padding:7px 8px; border:1px solid var(--line-strong); border-radius:var(--radius-sm); background:var(--bg-panel); }
   .lead-del{ background:none; border:1px solid var(--line-strong); border-radius:50%; width:30px;height:30px; flex:none; cursor:pointer; color:var(--ink-dim); }
   .lead-del:hover{ border-color:var(--danger); color:var(--danger); }
   .lead-del svg{ width:13px;height:13px; }
@@ -652,22 +653,47 @@
     return '<span class="badge ' + cls + '">' + escapeHtml(stageLabel(stage)) + '</span>';
   }
 
+  function renamePipelineStage(stage, newName){
+    var oldName = stage.name;
+    apiFetch('/rest/v1/pipeline_stages?id=eq.' + stage.id, { method:'PATCH', body: JSON.stringify({ name:newName }) })
+      .then(function(r){ if(!r.ok) throw new Error();
+        return apiFetch('/rest/v1/leads?stage=eq.' + encodeURIComponent(oldName), { method:'PATCH', body: JSON.stringify({ stage:newName }) });
+      })
+      .then(function(r2){ if(!r2.ok) throw new Error();
+        stage.name = newName;
+        cache.leads.forEach(function(l){ if(l.stage === oldName) l.stage = newName; });
+        renderKanban();
+        renderOverview();
+        showToast('Colonne renommée.');
+      })
+      .catch(function(){ showToast('Erreur : renommage impossible.'); renderKanban(); });
+  }
+
   function renderKanban(){
     var kanban = document.getElementById('kanban');
-    var stageNames = cache.stages.map(function(s){ return s.name; });
 
     kanban.innerHTML = cache.stages.map(function(stage){
       var items = cache.leads.filter(function(l){ return l.stage === stage.name; });
       return '<div class="kanban-col" data-col-stage="' + escapeHtml(stage.name) + '" data-col-id="' + stage.id + '">' +
-        '<div class="kanban-col-head"><span>' + escapeHtml(stageLabel(stage.name)) + '</span><span style="display:flex;align-items:center;"><span class="count">' + items.length + '</span><button class="kanban-col-del" data-del-stage="' + stage.id + '" title="Supprimer la colonne"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button></span></div>' +
-        items.map(function(l){ return leadCardHtml(l, stageNames); }).join('') +
+        '<div class="kanban-col-head"><input class="kanban-col-title" data-stage-id="' + stage.id + '" value="' + escapeHtml(stageLabel(stage.name)) + '"><span style="display:flex;align-items:center;flex:none;"><span class="count">' + items.length + '</span><button class="kanban-col-del" data-del-stage="' + stage.id + '" title="Supprimer la colonne"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button></span></div>' +
+        items.map(function(l){ return leadCardHtml(l); }).join('') +
       '</div>';
     }).join('') + '<div class="kanban-add-col"><button id="addColumnBtn">+ Ajouter une colonne</button></div>';
 
-    /* stage change via dropdown */
-    kanban.querySelectorAll('[data-stage-select]').forEach(function(sel){
-      sel.addEventListener('click', function(e){ e.stopPropagation(); });
-      sel.addEventListener('change', function(){ updateLeadStage(sel.dataset.stageSelect, sel.value); });
+    /* rename column */
+    kanban.querySelectorAll('.kanban-col-title').forEach(function(input){
+      input.addEventListener('click', function(e){ e.stopPropagation(); });
+      input.addEventListener('keydown', function(e){
+        if(e.key === 'Enter') input.blur();
+        if(e.key === 'Escape'){ var s = cache.stages.find(function(x){ return x.id === input.dataset.stageId; }); input.value = s ? stageLabel(s.name) : input.value; input.blur(); }
+      });
+      input.addEventListener('blur', function(){
+        var stage = cache.stages.find(function(s){ return s.id === input.dataset.stageId; });
+        if(!stage) return;
+        var newName = input.value.trim();
+        if(!newName || newName === stageLabel(stage.name)){ input.value = stageLabel(stage.name); return; }
+        renamePipelineStage(stage, newName);
+      });
     });
     /* delete lead */
     kanban.querySelectorAll('[data-lead-del]').forEach(function(btn){
@@ -746,13 +772,12 @@
     });
   }
 
-  function leadCardHtml(l, stageNames){
-    var stageOptions = stageNames.map(function(s){ return '<option value="' + escapeHtml(s) + '"' + (s === l.stage ? ' selected' : '') + '>' + escapeHtml(stageLabel(s)) + '</option>'; }).join('');
+  function leadCardHtml(l){
     return '<div class="lead-card plaque" draggable="true" data-lead-card="' + l.id + '">' +
       '<div class="l-name">' + escapeHtml(l.first_name || '—') + '</div>' +
       '<div class="l-company">' + escapeHtml(l.company || '') + '</div>' +
       (l.phone ? '<div class="l-phone">' + escapeHtml(l.phone) + '</div>' : '') +
-      '<div class="lead-card-actions"><select data-stage-select="' + l.id + '">' + stageOptions + '</select><button class="lead-del" data-lead-del="' + l.id + '" title="Supprimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button></div>' +
+      '<div class="lead-card-actions"><button class="lead-del" data-lead-del="' + l.id + '" title="Supprimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button></div>' +
     '</div>';
   }
 
@@ -768,7 +793,7 @@
       .catch(function(){ showToast('Erreur : suppression impossible.'); });
   }
 
-  var SOURCE_LABELS = { diagnostic_funnel:'Formulaire site', manuel:'Manuel' };
+  var SOURCE_LABELS = { diagnostic_funnel:'Formulaire site', manuel:'Manuel', referral:'Referrals', cold_email:'Cold email', cold_call:'Cold call' };
   function selectOptions(map, current){
     var opts = Object.keys(map).map(function(k){ return '<option value="' + k + '"' + (k === current ? ' selected' : '') + '>' + escapeHtml(map[k]) + '</option>'; }).join('');
     if(current && !map[current]) opts += '<option value="' + escapeHtml(current) + '" selected>' + escapeHtml(current) + '</option>';
@@ -790,7 +815,6 @@
           '<div class="onb-field-row"><div class="field"><label>Entreprise</label><input type="text" id="leadModalCompany" value="' + escapeHtml(l.company || '') + '"></div><div class="field"><label>Téléphone</label><input type="text" id="leadModalPhone" value="' + escapeHtml(l.phone || '') + '"></div></div>' +
           '<div class="onb-field-row"><div class="field"><label>Secteur</label><select id="leadModalSector">' + selectOptions(SECTOR_LABELS, l.sector) + '</select></div><div class="field"><label>Taille d\'équipe</label><select id="leadModalTeamSize">' + selectOptions(TEAM_LABELS, l.team_size) + '</select></div></div>' +
           '<div class="onb-field-row"><div class="field"><label>Priorité</label><select id="leadModalPriority">' + selectOptions(PRIORITY_LABELS, l.priority) + '</select></div><div class="field"><label>Source</label><select id="leadModalSource">' + selectOptions(SOURCE_LABELS, l.source) + '</select></div></div>' +
-          '<button class="btn btn-outline btn-sm" id="leadModalSaveInfo">Enregistrer les infos</button>' +
         '</div>' +
         (l.source === 'diagnostic_funnel' ?
           '<details class="lead-form-details">' +
@@ -806,7 +830,7 @@
           '</details>'
         : '') +
         '<div class="modal-section"><h4>Étape du pipeline</h4><div class="field"><select id="leadModalStage">' + stageOptions + '</select></div></div>' +
-        '<div class="modal-section"><h4>Note interne</h4><div class="field"><textarea id="leadModalNote" placeholder="Notes visibles uniquement par l\'agence…">' + escapeHtml(l.internal_note || '') + '</textarea></div><button class="btn btn-outline btn-sm" id="leadModalSaveNote">Enregistrer la note</button></div>' +
+        '<div class="modal-section"><h4>Note interne</h4><div class="field"><textarea id="leadModalNote" placeholder="Notes visibles uniquement par l\'agence…">' + escapeHtml(l.internal_note || '') + '</textarea></div></div>' +
         '<div class="detail-actions">' +
           '<button class="btn btn-accent btn-sm" id="leadModalConvert">Convertir en client</button>' +
           '<button class="btn btn-outline btn-sm" id="leadModalDelete">Supprimer</button>' +
@@ -819,7 +843,7 @@
     overlay.querySelector('#leadModalStage').addEventListener('change', function(e){
       updateLeadStage(l.id, e.target.value);
     });
-    overlay.querySelector('#leadModalSaveInfo').addEventListener('click', function(){
+    function saveLeadInfo(){
       var payload = {
         company: overlay.querySelector('#leadModalCompany').value.trim() || null,
         phone: overlay.querySelector('#leadModalPhone').value.trim() || null,
@@ -834,8 +858,14 @@
           renderKanban();
           showToast('Infos enregistrées.');
         }).catch(function(){ showToast('Erreur : infos non enregistrées.'); });
-    });
-    overlay.querySelector('#leadModalSaveNote').addEventListener('click', function(){
+    }
+    overlay.querySelector('#leadModalCompany').addEventListener('blur', saveLeadInfo);
+    overlay.querySelector('#leadModalPhone').addEventListener('blur', saveLeadInfo);
+    overlay.querySelector('#leadModalSector').addEventListener('change', saveLeadInfo);
+    overlay.querySelector('#leadModalTeamSize').addEventListener('change', saveLeadInfo);
+    overlay.querySelector('#leadModalPriority').addEventListener('change', saveLeadInfo);
+    overlay.querySelector('#leadModalSource').addEventListener('change', saveLeadInfo);
+    overlay.querySelector('#leadModalNote').addEventListener('blur', function(){
       var note = overlay.querySelector('#leadModalNote').value;
       apiFetch('/rest/v1/leads?id=eq.' + l.id, { method:'PATCH', body: JSON.stringify({ internal_note:note }) })
         .then(function(r){ if(!r.ok) throw new Error(); l.internal_note = note; showToast('Note enregistrée.'); })
@@ -995,7 +1025,6 @@
           '</div>' +
           '<div class="modal-section"><h4>Notes</h4>' +
             '<div class="field"><textarea id="modalNotes">' + escapeHtml(c.notes || '') + '</textarea></div>' +
-            '<button class="btn btn-outline btn-sm" id="modalSaveNotes">Enregistrer les notes</button>' +
           '</div>' +
         '</div>' +
 
@@ -1020,7 +1049,7 @@
     overlay.querySelectorAll('.modal-tab').forEach(function(b){ b.addEventListener('click', function(){ switchTab(b.dataset.tab); }); });
     switchTab(startTab || 'infos');
 
-    overlay.querySelector('#modalSaveNotes').addEventListener('click', function(){
+    overlay.querySelector('#modalNotes').addEventListener('blur', function(){
       var notes = overlay.querySelector('#modalNotes').value;
       apiFetch('/rest/v1/clients?id=eq.' + c.id, { method:'PATCH', body: JSON.stringify({ notes:notes }) })
         .then(function(r){ if(!r.ok) throw new Error(); c.notes = notes; showToast('Notes enregistrées.'); })
@@ -1079,9 +1108,7 @@
 
       '<div class="onb-subhead">Espace client</div>' +
       '<div class="field"><label>Message de briefing</label><textarea id="onbBriefing">' + escapeHtml(cfg.briefing || '') + '</textarea></div>' +
-      '<div class="onb-field-row"><div class="field"><label>Libellé de la tâche "formulaire"</label><input type="text" id="onbFormLabel" value="' + escapeHtml(tasks[formTaskIdx] ? tasks[formTaskIdx].label : '') + '"></div><div class="field"><label>Lien du formulaire</label><input type="text" id="onbFormLink" value="' + escapeHtml(tasks[formTaskIdx] ? (tasks[formTaskIdx].link || '') : '') + '"></div></div>' +
-
-      '<div class="detail-actions"><button class="btn btn-accent btn-sm" id="onbSaveBtn">Enregistrer</button></div>'
+      '<div class="onb-field-row"><div class="field"><label>Libellé de la tâche "formulaire"</label><input type="text" id="onbFormLabel" value="' + escapeHtml(tasks[formTaskIdx] ? tasks[formTaskIdx].label : '') + '"></div><div class="field"><label>Lien du formulaire</label><input type="text" id="onbFormLink" value="' + escapeHtml(tasks[formTaskIdx] ? (tasks[formTaskIdx].link || '') : '') + '"></div></div>'
     );
   }
 
@@ -1124,7 +1151,6 @@
         '<p style="font-size:12.5px;color:var(--ink-dim);margin:0 0 14px;">Si renseignée, elle s\'affiche dans la sidebar de l\'espace client (encart animé en bas de la navigation).</p>' +
         '<div class="field"><label>Titre</label><input type="text" id="referralTitle" placeholder="Ex : Parrainez un contact" value="' + escapeHtml((cfg.referral && cfg.referral.title) || '') + '"></div>' +
         '<div class="field"><label>Description</label><textarea id="referralDescription" placeholder="Ex : Recommandez-nous une entreprise et recevez 1 mois offert dès sa signature.">' + escapeHtml((cfg.referral && cfg.referral.description) || '') + '</textarea></div>' +
-        '<button class="btn btn-outline btn-sm" id="referralSaveBtn">Enregistrer l\'offre</button>' +
       '</div>' +
 
       '<div class="detail-actions"><a class="btn btn-outline btn-sm" href="' + escapeHtml(espaceLink) + '" target="_blank" rel="noopener">Voir l\'espace client ↗</a></div>'
@@ -1137,13 +1163,14 @@
     payTypeSel.addEventListener('change', function(){
       overlay.querySelector('#onbPayStripe').hidden = (payTypeSel.value === 'iban');
       overlay.querySelector('#onbPayIban').hidden = (payTypeSel.value !== 'iban');
+      saveOnboarding();
     });
     overlay.querySelector('#onbCopyBtn').addEventListener('click', function(){
       var input = overlay.querySelector('#onbLinkInput');
       input.select();
       try{ document.execCommand('copy'); showToast('Lien copié.'); }catch(e){ showToast('Copie manuelle : sélectionnez le champ.'); }
     });
-    overlay.querySelector('#onbSaveBtn').addEventListener('click', function(){
+    function saveOnboarding(){
       var benefits = overlay.querySelector('#onbOfferBenefits').value.split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
       var newStage = overlay.querySelector('#onbStageSelect').value;
       var newConfig = {
@@ -1172,6 +1199,10 @@
           renderOnboardKanban();
           showToast('Onboarding enregistré.');
         }).catch(function(){ showToast('Erreur : onboarding non enregistré.'); });
+    }
+    overlay.querySelector('#onbStageSelect').addEventListener('change', saveOnboarding);
+    ['onbIntroTitle','onbIntroBody','onbOfferTitle','onbOfferPrice','onbOfferBenefits','onbPaymentLink','onbIban','onbBic','onbAccountHolder','onbContractUrl','onbBriefing','onbFormLabel','onbFormLink'].forEach(function(id){
+      overlay.querySelector('#' + id).addEventListener('blur', saveOnboarding);
     });
   }
 
@@ -1186,8 +1217,7 @@
       openClientModal(c.id, 'espace');
     }
 
-    var referralSaveBtn = overlay.querySelector('#referralSaveBtn');
-    if(referralSaveBtn) referralSaveBtn.addEventListener('click', function(){
+    function saveReferralOffer(){
       var title = overlay.querySelector('#referralTitle').value.trim();
       var description = overlay.querySelector('#referralDescription').value.trim();
       var newConfig = Object.assign({}, c.onboarding_config, { referral: { title: title, description: description } });
@@ -1196,7 +1226,9 @@
           c.onboarding_config = newConfig;
           showToast('Offre enregistrée.');
         }).catch(function(){ showToast('Erreur : offre non enregistrée.'); });
-    });
+    }
+    overlay.querySelector('#referralTitle').addEventListener('blur', saveReferralOffer);
+    overlay.querySelector('#referralDescription').addEventListener('blur', saveReferralOffer);
 
     var invAddBtn = overlay.querySelector('#invAddBtn');
     if(invAddBtn) invAddBtn.addEventListener('click', function(){
@@ -1265,6 +1297,21 @@
   }
 
   /* ---------------- Roadmap kanban (plein écran) ---------------- */
+  function renameRoadmapStage(client, stage, newName, onDone){
+    var oldName = stage.name;
+    apiFetch('/rest/v1/roadmap_stages?id=eq.' + stage.id, { method:'PATCH', body: JSON.stringify({ name:newName }) })
+      .then(function(r){ if(!r.ok) throw new Error();
+        return apiFetch('/rest/v1/roadmap_items?client_id=eq.' + client.id + '&stage=eq.' + encodeURIComponent(oldName), { method:'PATCH', body: JSON.stringify({ stage:newName }) });
+      })
+      .then(function(r2){ if(!r2.ok) throw new Error();
+        stage.name = newName;
+        cache.roadmap.forEach(function(it){ if(it.client_id === client.id && it.stage === oldName) it.stage = newName; });
+        if(onDone) onDone();
+        showToast('Colonne renommée.');
+      })
+      .catch(function(){ showToast('Erreur : renommage impossible.'); if(onDone) onDone(); });
+  }
+
   function openRoadmapKanban(client){
     var clientProjects = projectsForClient(client.id);
     var rmProjectId = clientProjects.length ? clientProjects[0].id : null;
@@ -1291,7 +1338,7 @@
       kanban.innerHTML = stages.map(function(stage){
         var colItems = items.filter(function(it){ return it.stage === stage.name; });
         return '<div class="kanban-col" data-col-stage="' + escapeHtml(stage.name) + '">' +
-          '<div class="kanban-col-head"><span>' + escapeHtml(roadmapStageLabel(stage.name)) + '</span><span style="display:flex;align-items:center;gap:6px;"><span class="count">' + colItems.length + '</span><button class="kanban-col-del" data-del-stage="' + stage.id + '" title="Supprimer la colonne"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button></span></div>' +
+          '<div class="kanban-col-head"><input class="kanban-col-title" data-stage-id="' + stage.id + '" value="' + escapeHtml(roadmapStageLabel(stage.name)) + '"><span style="display:flex;align-items:center;gap:6px;flex:none;"><span class="count">' + colItems.length + '</span><button class="kanban-col-del" data-del-stage="' + stage.id + '" title="Supprimer la colonne"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button></span></div>' +
           colItems.map(function(it){
             var itProject = projectById(it.project_id);
             return '<div class="roadmap-card plaque" draggable="true" data-item-id="' + it.id + '"><h4>' + escapeHtml(it.title) + '</h4>' +
@@ -1304,6 +1351,20 @@
         '</div>';
       }).join('') + '<div class="kanban-add-col"><button id="rmAddColBtn">+ Ajouter une colonne</button></div>';
 
+      kanban.querySelectorAll('.kanban-col-title').forEach(function(input){
+        input.addEventListener('click', function(e){ e.stopPropagation(); });
+        input.addEventListener('keydown', function(e){
+          if(e.key === 'Enter') input.blur();
+          if(e.key === 'Escape'){ var s = cache.roadmapStages.find(function(x){ return x.id === input.dataset.stageId; }); input.value = s ? roadmapStageLabel(s.name) : input.value; input.blur(); }
+        });
+        input.addEventListener('blur', function(){
+          var stage = cache.roadmapStages.find(function(s){ return s.id === input.dataset.stageId; });
+          if(!stage) return;
+          var newName = input.value.trim();
+          if(!newName || newName === roadmapStageLabel(stage.name)){ input.value = roadmapStageLabel(stage.name); return; }
+          renameRoadmapStage(client, stage, newName, renderRmKanban);
+        });
+      });
       kanban.querySelectorAll('[data-add-task]').forEach(function(btn){
         btn.addEventListener('click', function(){ openTaskDetail(client, null, btn.dataset.addTask, renderRmKanban, rmProjectId); });
       });
@@ -1380,8 +1441,7 @@
         '<div class="onb-field-row"><div class="field"><label>Deadline</label><input type="date" id="tdDeadline" value="' + (item.deadline || '') + '"></div><div class="field"><label>Date de réalisation</label><input type="date" id="tdCompleted" value="' + (item.completed_at || '') + '"></div></div>' +
         '<div class="onb-subhead">Notes internes <span style="text-transform:none;font-weight:400;color:var(--ink-faint);">— jamais visibles par le client</span></div>' +
         '<div class="field"><textarea id="tdNote" placeholder="Contexte, points de vigilance…">' + escapeHtml(item.internal_note || '') + '</textarea></div>' +
-        '<div class="detail-actions">' +
-          '<button class="btn btn-accent btn-sm" id="tdSave">Enregistrer</button>' +
+        '<div class="detail-actions" id="tdActions">' +
           (itemId ? '<button class="btn btn-outline btn-sm" id="tdDelete">Supprimer</button>' : '') +
         '</div>' +
       '</div>';
@@ -1389,9 +1449,25 @@
     overlay.addEventListener('click', function(e){ if(e.target === overlay) document.body.removeChild(overlay); });
     overlay.querySelector('#tdClose').addEventListener('click', function(){ document.body.removeChild(overlay); });
 
-    overlay.querySelector('#tdSave').addEventListener('click', function(){
+    var currentItemId = itemId;
+
+    function wireDeleteBtn(btn){
+      btn.addEventListener('click', function(){
+        confirmDialog('Supprimer cette tâche ? Cette action est irréversible.', function(){
+          apiFetch('/rest/v1/roadmap_items?id=eq.' + currentItemId, { method:'DELETE' })
+            .then(function(r){ if(!r.ok) throw new Error();
+              cache.roadmap = cache.roadmap.filter(function(x){ return x.id !== currentItemId; });
+              document.body.removeChild(overlay);
+              if(onDone) onDone();
+            }).catch(function(){ showToast('Erreur : suppression impossible.'); });
+        });
+      });
+    }
+    if(itemId) wireDeleteBtn(overlay.querySelector('#tdDelete'));
+
+    function saveTask(){
       var title = overlay.querySelector('#tdTitle').value.trim();
-      if(!title){ showToast('Le titre est requis.'); return; }
+      if(!title) return;
       var description = overlay.querySelector('#tdDesc').value;
       var videoLink = overlay.querySelector('#tdVideo').value.trim();
       var watchedEl = overlay.querySelector('#tdWatched');
@@ -1400,15 +1476,14 @@
       var projectId = overlay.querySelector('#tdProject').value || null;
       var internalNote = overlay.querySelector('#tdNote').value;
       var stageEl = overlay.querySelector('#tdStage');
-      var stage = stageEl ? stageEl.value : (itemId ? item.stage : newStage);
+      var stage = stageEl ? stageEl.value : (currentItemId ? item.stage : newStage);
       var payload = { title:title, description:description, video_link: videoLink || null, deadline:deadline, completed_at:completedAt, project_id:projectId, internal_note:internalNote, stage:stage };
       if(watchedEl) payload.video_watched = watchedEl.checked;
 
-      if(itemId){
-        apiFetch('/rest/v1/roadmap_items?id=eq.' + itemId, { method:'PATCH', body: JSON.stringify(payload) })
+      if(currentItemId){
+        apiFetch('/rest/v1/roadmap_items?id=eq.' + currentItemId, { method:'PATCH', body: JSON.stringify(payload) })
           .then(function(r){ if(!r.ok) throw new Error();
             Object.assign(item, payload);
-            document.body.removeChild(overlay);
             if(onDone) onDone();
           }).catch(function(){ showToast('Erreur : tâche non enregistrée.'); });
       } else {
@@ -1416,23 +1491,32 @@
         apiFetch('/rest/v1/roadmap_items', { method:'POST', headers:{ 'Prefer':'return=representation' }, body: JSON.stringify(Object.assign({ client_id:client.id, position:position }, payload)) })
           .then(function(r){ return r.json().then(function(d){ return { ok:r.ok, d:d }; }); })
           .then(function(res){ if(!res.ok) throw new Error();
+            currentItemId = res.d[0].id;
+            Object.assign(item, res.d[0]);
             cache.roadmap.push(res.d[0]);
-            document.body.removeChild(overlay);
+            var actions = overlay.querySelector('#tdActions');
+            if(!actions.querySelector('#tdDelete')){
+              var btn = document.createElement('button');
+              btn.className = 'btn btn-outline btn-sm';
+              btn.id = 'tdDelete';
+              btn.textContent = 'Supprimer';
+              actions.appendChild(btn);
+              wireDeleteBtn(btn);
+            }
             if(onDone) onDone();
           }).catch(function(){ showToast('Erreur : tâche non créée.'); });
       }
-    });
-    var delBtn = overlay.querySelector('#tdDelete');
-    if(delBtn) delBtn.addEventListener('click', function(){
-      confirmDialog('Supprimer cette tâche ? Cette action est irréversible.', function(){
-        apiFetch('/rest/v1/roadmap_items?id=eq.' + itemId, { method:'DELETE' })
-          .then(function(r){ if(!r.ok) throw new Error();
-            cache.roadmap = cache.roadmap.filter(function(x){ return x.id !== itemId; });
-            document.body.removeChild(overlay);
-            if(onDone) onDone();
-          }).catch(function(){ showToast('Erreur : suppression impossible.'); });
-      });
-    });
+    }
+    overlay.querySelector('#tdProject').addEventListener('change', saveTask);
+    overlay.querySelector('#tdStage').addEventListener('change', saveTask);
+    overlay.querySelector('#tdTitle').addEventListener('blur', saveTask);
+    overlay.querySelector('#tdDesc').addEventListener('blur', saveTask);
+    overlay.querySelector('#tdVideo').addEventListener('blur', saveTask);
+    var tdWatchedEl = overlay.querySelector('#tdWatched');
+    if(tdWatchedEl) tdWatchedEl.addEventListener('change', saveTask);
+    overlay.querySelector('#tdDeadline').addEventListener('change', saveTask);
+    overlay.querySelector('#tdCompleted').addEventListener('change', saveTask);
+    overlay.querySelector('#tdNote').addEventListener('blur', saveTask);
   }
 
   /* ---------------- Génération de rapport (IA) ---------------- */
@@ -1621,7 +1705,6 @@
         '<div class="onb-subhead">Notes internes <span style="text-transform:none;font-weight:400;color:var(--ink-faint);">— jamais visibles par le client</span></div>' +
         '<div class="field"><textarea id="projModalNote" placeholder="Contexte, historique, points de vigilance…">' + escapeHtml(p.internal_note || '') + '</textarea></div>' +
         '<div class="detail-actions">' +
-          '<button class="btn btn-accent btn-sm" id="projModalSave">Enregistrer</button>' +
           '<button class="btn btn-outline btn-sm" id="projModalDelete">Supprimer</button>' +
         '</div>' +
       '</div>';
@@ -1629,7 +1712,7 @@
     overlay.addEventListener('click', function(e){ if(e.target === overlay) document.body.removeChild(overlay); });
     overlay.querySelector('#projModalClose').addEventListener('click', function(){ document.body.removeChild(overlay); });
 
-    overlay.querySelector('#projModalSave').addEventListener('click', function(){
+    function saveProject(){
       var payload = {
         status: overlay.querySelector('#projModalStatus').value,
         start_date: overlay.querySelector('#projModalStart').value || null,
@@ -1638,9 +1721,14 @@
         internal_note: overlay.querySelector('#projModalNote').value
       };
       apiFetch('/rest/v1/projects?id=eq.' + p.id, { method:'PATCH', body: JSON.stringify(payload) })
-        .then(function(r){ if(!r.ok) throw new Error(); Object.assign(p, payload); renderProjects(); renderOverview(); document.body.removeChild(overlay); showToast('Projet mis à jour.'); })
+        .then(function(r){ if(!r.ok) throw new Error(); Object.assign(p, payload); renderProjects(); renderOverview(); showToast('Projet mis à jour.'); })
         .catch(function(){ showToast('Erreur : projet non enregistré.'); });
-    });
+    }
+    overlay.querySelector('#projModalStatus').addEventListener('change', saveProject);
+    overlay.querySelector('#projModalStart').addEventListener('change', saveProject);
+    overlay.querySelector('#projModalTarget').addEventListener('change', saveProject);
+    overlay.querySelector('#projModalDesc').addEventListener('blur', saveProject);
+    overlay.querySelector('#projModalNote').addEventListener('blur', saveProject);
     overlay.querySelector('#projModalDelete').addEventListener('click', function(){
       confirmDialog('Supprimer ce projet ? Toutes ses tâches perdront leur rattachement. Cette action est irréversible.', function(){
         apiFetch('/rest/v1/projects?id=eq.' + p.id, { method:'DELETE' })

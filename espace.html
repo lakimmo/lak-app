@@ -571,12 +571,33 @@
     kanban.innerHTML = stages.map(function(stage){
       var colItems = items.filter(function(it){ return it.stage === stage.name; });
       return '<div class="kanban-col" data-col-stage="' + escapeHtml(stage.name) + '">' +
-        '<div class="kanban-col-head"><span>' + escapeHtml(stageLabel(stage.name)) + '</span><span style="display:flex;align-items:center;gap:6px;"><span class="count">' + colItems.length + '</span><button class="kanban-col-del" data-del-stage="' + stage.id + '" title="Supprimer la colonne"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button></span></div>' +
+        '<div class="kanban-col-head"><input class="kanban-col-title" data-stage-id="' + stage.id + '" value="' + escapeHtml(stageLabel(stage.name)) + '"><span style="display:flex;align-items:center;gap:6px;flex:none;"><span class="count">' + colItems.length + '</span><button class="kanban-col-del" data-del-stage="' + stage.id + '" title="Supprimer la colonne"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button></span></div>' +
         colItems.map(function(it){ return roadmapCardHtml(it); }).join('') +
         '<button class="add-card-btn" data-add-task="' + escapeHtml(stage.name) + '">+ Ajouter une tâche</button>' +
       '</div>';
     }).join('') + '<div class="kanban-add-col"><button id="addColumnBtn">+ Ajouter une colonne</button></div>';
 
+    kanban.querySelectorAll('.kanban-col-title').forEach(function(input){
+      input.addEventListener('click', function(e){ e.stopPropagation(); });
+      input.addEventListener('keydown', function(e){
+        if(e.key === 'Enter') input.blur();
+        if(e.key === 'Escape'){ var s = current.roadmap_stages.find(function(x){ return x.id === input.dataset.stageId; }); input.value = s ? stageLabel(s.name) : input.value; input.blur(); }
+      });
+      input.addEventListener('blur', function(){
+        var stage = current.roadmap_stages.find(function(s){ return s.id === input.dataset.stageId; });
+        if(!stage) return;
+        var newName = input.value.trim();
+        if(!newName || newName === stageLabel(stage.name)){ input.value = stageLabel(stage.name); return; }
+        rpc('rename_roadmap_stage', { p_token:token, p_stage_id:stage.id, p_new_name:newName }).then(function(ok){
+          if(ok){
+            var oldName = stage.name;
+            stage.name = newName;
+            current.roadmap_items.forEach(function(it){ if(it.stage === oldName) it.stage = newName; });
+            renderKanban(current.roadmap_stages, itemsForCurrentProject());
+          }
+        });
+      });
+    });
     kanban.querySelectorAll('[data-add-task]').forEach(function(btn){
       btn.addEventListener('click', function(){ openTaskModal(null, btn.dataset.addTask); });
     });
@@ -650,8 +671,7 @@
           '<div class="field"><label>Deadline</label><input type="date" id="taskDeadline" value="' + (item.deadline || '') + '"></div>' +
           '<div class="field"><label>Date de réalisation</label><input type="date" id="taskCompleted" value="' + (item.completed_at || '') + '"></div>' +
         '</div>' +
-        '<div class="detail-actions">' +
-          '<button class="btn btn-accent btn-sm" id="taskSave">Enregistrer</button>' +
+        '<div class="detail-actions" id="taskActions">' +
           (itemId ? '<button class="btn btn-outline btn-sm" id="taskDelete">Supprimer</button>' : '') +
         '</div>' +
       '</div>';
@@ -659,44 +679,66 @@
     overlay.addEventListener('click', function(e){ if(e.target === overlay) document.body.removeChild(overlay); });
     overlay.querySelector('#taskClose').addEventListener('click', function(){ document.body.removeChild(overlay); });
 
-    overlay.querySelector('#taskSave').addEventListener('click', function(){
+    var currentItemId = itemId;
+
+    function wireDeleteBtn(btn){
+      btn.addEventListener('click', function(){
+        confirmDialog('Supprimer cette tâche ? Cette action est irréversible.', function(){
+          rpc('delete_roadmap_item', { p_token:token, p_item_id:currentItemId }).then(function(ok){
+            if(ok){
+              current.roadmap_items = current.roadmap_items.filter(function(x){ return x.id !== currentItemId; });
+              renderKanban(current.roadmap_stages, itemsForCurrentProject());
+              document.body.removeChild(overlay);
+            }
+          });
+        });
+      });
+    }
+    if(itemId) wireDeleteBtn(overlay.querySelector('#taskDelete'));
+
+    function saveTask(){
       var title = overlay.querySelector('#taskTitle').value.trim();
-      if(!title){ alert('Le titre est requis.'); return; }
+      if(!title) return;
       var description = overlay.querySelector('#taskDesc').value;
       var videoLink = overlay.querySelector('#taskVideo').value.trim();
       var deadline = overlay.querySelector('#taskDeadline').value || null;
       var completedAt = overlay.querySelector('#taskCompleted').value || null;
-      rpc('upsert_roadmap_item', { p_token:token, p_item_id:itemId || null, p_stage:item.stage, p_title:title, p_description:description, p_video_link:videoLink || null, p_deadline:deadline, p_completed_at:completedAt, p_project_id:item.project_id || resolvedProjectId() })
+      rpc('upsert_roadmap_item', { p_token:token, p_item_id:currentItemId || null, p_stage:item.stage, p_title:title, p_description:description, p_video_link:videoLink || null, p_deadline:deadline, p_completed_at:completedAt, p_project_id:item.project_id || resolvedProjectId() })
         .then(function(id){
           if(!id) return;
+          var wasNew = !currentItemId;
+          currentItemId = id;
           var watchedEl = overlay.querySelector('#taskWatched');
           var applyWatched = function(){
-            if(itemId){
-              var idx = current.roadmap_items.findIndex(function(x){ return x.id === itemId; });
-              current.roadmap_items[idx] = Object.assign({}, current.roadmap_items[idx], { title:title, description:description, video_link:videoLink, deadline:deadline, completed_at:completedAt, video_watched: watchedEl ? watchedEl.checked : current.roadmap_items[idx].video_watched });
-            } else {
-              current.roadmap_items.push({ id:id, title:title, description:description, video_link:videoLink, video_watched:false, stage:item.stage, position: current.roadmap_items.length, deadline:deadline, completed_at:completedAt, project_id: item.project_id || resolvedProjectId() });
-            }
+            var idx = current.roadmap_items.findIndex(function(x){ return x.id === id; });
+            var data = { id:id, title:title, description:description, video_link:videoLink, stage:item.stage, deadline:deadline, completed_at:completedAt, project_id: item.project_id || resolvedProjectId(), video_watched: watchedEl ? watchedEl.checked : (idx > -1 ? current.roadmap_items[idx].video_watched : false), position: idx > -1 ? current.roadmap_items[idx].position : current.roadmap_items.length };
+            if(idx > -1) current.roadmap_items[idx] = Object.assign({}, current.roadmap_items[idx], data);
+            else current.roadmap_items.push(data);
             renderKanban(current.roadmap_stages, itemsForCurrentProject());
-            document.body.removeChild(overlay);
+            if(wasNew){
+              var actions = overlay.querySelector('#taskActions');
+              if(!actions.querySelector('#taskDelete')){
+                var btn = document.createElement('button');
+                btn.className = 'btn btn-outline btn-sm';
+                btn.id = 'taskDelete';
+                btn.textContent = 'Supprimer';
+                actions.appendChild(btn);
+                wireDeleteBtn(btn);
+              }
+            }
           };
-          if(watchedEl && itemId){
-            rpc('set_video_watched', { p_token:token, p_item_id:itemId, p_watched:watchedEl.checked }).then(applyWatched);
+          if(watchedEl && !wasNew){
+            rpc('set_video_watched', { p_token:token, p_item_id:id, p_watched:watchedEl.checked }).then(applyWatched);
           } else { applyWatched(); }
         });
-    });
-    var delBtn = overlay.querySelector('#taskDelete');
-    if(delBtn) delBtn.addEventListener('click', function(){
-      confirmDialog('Supprimer cette tâche ? Cette action est irréversible.', function(){
-        rpc('delete_roadmap_item', { p_token:token, p_item_id:itemId }).then(function(ok){
-          if(ok){
-            current.roadmap_items = current.roadmap_items.filter(function(x){ return x.id !== itemId; });
-            renderKanban(current.roadmap_stages, itemsForCurrentProject());
-            document.body.removeChild(overlay);
-          }
-        });
-      });
-    });
+    }
+    overlay.querySelector('#taskTitle').addEventListener('blur', saveTask);
+    overlay.querySelector('#taskDesc').addEventListener('blur', saveTask);
+    overlay.querySelector('#taskVideo').addEventListener('blur', saveTask);
+    var taskWatchedEl = overlay.querySelector('#taskWatched');
+    if(taskWatchedEl) taskWatchedEl.addEventListener('change', saveTask);
+    overlay.querySelector('#taskDeadline').addEventListener('change', saveTask);
+    overlay.querySelector('#taskCompleted').addEventListener('change', saveTask);
   }
 
   function confirmDialog(message, onConfirm){
