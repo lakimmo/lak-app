@@ -605,9 +605,10 @@
         if(!stageObj) return;
         var used = current.roadmap_items.some(function(it){ return it.stage === stageObj.name; });
         if(used){ alert('Déplacez d\'abord les tâches de cette colonne.'); return; }
-        if(!confirm('Supprimer la colonne « ' + stageLabel(stageObj.name) + ' » ?')) return;
-        rpc('delete_roadmap_stage', { p_token:token, p_stage_id:stageObj.id }).then(function(ok){
-          if(ok){ current.roadmap_stages = current.roadmap_stages.filter(function(s){ return s.id !== stageObj.id; }); renderKanban(current.roadmap_stages, itemsForCurrentProject()); }
+        confirmDialog('Supprimer la colonne « ' + stageLabel(stageObj.name) + ' » ?', function(){
+          rpc('delete_roadmap_stage', { p_token:token, p_stage_id:stageObj.id }).then(function(ok){
+            if(ok){ current.roadmap_stages = current.roadmap_stages.filter(function(s){ return s.id !== stageObj.id; }); renderKanban(current.roadmap_stages, itemsForCurrentProject()); }
+          });
         });
       });
     });
@@ -686,15 +687,33 @@
     });
     var delBtn = overlay.querySelector('#taskDelete');
     if(delBtn) delBtn.addEventListener('click', function(){
-      if(!confirm('Supprimer cette tâche ?')) return;
-      rpc('delete_roadmap_item', { p_token:token, p_item_id:itemId }).then(function(ok){
-        if(ok){
-          current.roadmap_items = current.roadmap_items.filter(function(x){ return x.id !== itemId; });
-          renderKanban(current.roadmap_stages, itemsForCurrentProject());
-          document.body.removeChild(overlay);
-        }
+      confirmDialog('Supprimer cette tâche ? Cette action est irréversible.', function(){
+        rpc('delete_roadmap_item', { p_token:token, p_item_id:itemId }).then(function(ok){
+          if(ok){
+            current.roadmap_items = current.roadmap_items.filter(function(x){ return x.id !== itemId; });
+            renderKanban(current.roadmap_stages, itemsForCurrentProject());
+            document.body.removeChild(overlay);
+          }
+        });
       });
     });
+  }
+
+  function confirmDialog(message, onConfirm){
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-panel plaque" style="max-width:380px;">' +
+        '<p style="font-size:14.5px;line-height:1.6;margin:0 0 20px;">' + escapeHtml(message) + '</p>' +
+        '<div class="detail-actions" style="margin-top:0;">' +
+          '<button class="btn btn-accent btn-sm" id="confirmDialogYes">Supprimer</button>' +
+          '<button class="btn btn-outline btn-sm" id="confirmDialogNo">Annuler</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e){ if(e.target === overlay) document.body.removeChild(overlay); });
+    overlay.querySelector('#confirmDialogNo').addEventListener('click', function(){ document.body.removeChild(overlay); });
+    overlay.querySelector('#confirmDialogYes').addEventListener('click', function(){ document.body.removeChild(overlay); onConfirm(); });
   }
 
   function formatTime(d){ return new Date(d).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }); }

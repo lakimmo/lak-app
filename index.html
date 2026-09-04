@@ -479,6 +479,23 @@
     setTimeout(function(){ t.classList.remove('show'); }, 2600);
   }
 
+  function confirmDialog(message, onConfirm){
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-panel plaque" style="max-width:380px;">' +
+        '<p style="font-size:14.5px;line-height:1.6;margin:0 0 20px;">' + escapeHtml(message) + '</p>' +
+        '<div class="detail-actions" style="margin-top:0;">' +
+          '<button class="btn btn-accent btn-sm" id="confirmDialogYes">Supprimer</button>' +
+          '<button class="btn btn-outline btn-sm" id="confirmDialogNo">Annuler</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e){ if(e.target === overlay) document.body.removeChild(overlay); });
+    overlay.querySelector('#confirmDialogNo').addEventListener('click', function(){ document.body.removeChild(overlay); });
+    overlay.querySelector('#confirmDialogYes').addEventListener('click', function(){ document.body.removeChild(overlay); onConfirm(); });
+  }
+
   /* ---------------- Login ---------------- */
   var loginView = document.getElementById('loginView');
   var appShell = document.getElementById('appShell');
@@ -653,7 +670,7 @@
     kanban.querySelectorAll('[data-lead-del]').forEach(function(btn){
       btn.addEventListener('click', function(e){
         e.stopPropagation();
-        if(confirm('Supprimer ce prospect ?')) deleteLead(btn.dataset.leadDel);
+        confirmDialog('Supprimer ce prospect ?', function(){ deleteLead(btn.dataset.leadDel); });
       });
     });
     /* open detail on card click */
@@ -687,10 +704,11 @@
         if(!stage) return;
         var used = cache.leads.some(function(l){ return l.stage === stage.name; });
         if(used){ showToast('Déplacez d\'abord les prospects de cette colonne.'); return; }
-        if(!confirm('Supprimer la colonne « ' + stageLabel(stage.name) + ' » ?')) return;
-        apiFetch('/rest/v1/pipeline_stages?id=eq.' + stage.id, { method:'DELETE' })
-          .then(function(r){ if(!r.ok) throw new Error(); cache.stages = cache.stages.filter(function(s){ return s.id !== stage.id; }); renderKanban(); })
-          .catch(function(){ showToast('Erreur : colonne non supprimée.'); });
+        confirmDialog('Supprimer la colonne « ' + stageLabel(stage.name) + ' » ?', function(){
+          apiFetch('/rest/v1/pipeline_stages?id=eq.' + stage.id, { method:'DELETE' })
+            .then(function(r){ if(!r.ok) throw new Error(); cache.stages = cache.stages.filter(function(s){ return s.id !== stage.id; }); renderKanban(); })
+            .catch(function(){ showToast('Erreur : colonne non supprimée.'); });
+        });
       });
     });
     /* add column */
@@ -788,9 +806,10 @@
         .catch(function(){ showToast('Erreur : note non enregistrée.'); });
     });
     overlay.querySelector('#leadModalDelete').addEventListener('click', function(){
-      if(!confirm('Supprimer ce prospect ?')) return;
-      deleteLead(l.id);
-      document.body.removeChild(overlay);
+      confirmDialog('Supprimer ce prospect ?', function(){
+        deleteLead(l.id);
+        document.body.removeChild(overlay);
+      });
     });
     overlay.querySelector('#leadModalConvert').addEventListener('click', function(){
       apiFetch('/rest/v1/clients', {
@@ -1175,13 +1194,14 @@
     });
     overlay.querySelectorAll('[data-del-invoice]').forEach(function(btn){
       btn.addEventListener('click', function(){
-        if(!confirm('Supprimer cette facture ?')) return;
-        apiFetch('/rest/v1/invoices?id=eq.' + btn.dataset.delInvoice, { method:'DELETE' })
-          .then(function(r){ if(!r.ok) throw new Error();
-            cache.invoices = cache.invoices.filter(function(i){ return i.id !== btn.dataset.delInvoice; });
-            showToast('Facture supprimée.');
-            refreshEspaceTab();
-          }).catch(function(){ showToast('Erreur : suppression impossible.'); });
+        confirmDialog('Supprimer cette facture ?', function(){
+          apiFetch('/rest/v1/invoices?id=eq.' + btn.dataset.delInvoice, { method:'DELETE' })
+            .then(function(r){ if(!r.ok) throw new Error();
+              cache.invoices = cache.invoices.filter(function(i){ return i.id !== btn.dataset.delInvoice; });
+              showToast('Facture supprimée.');
+              refreshEspaceTab();
+            }).catch(function(){ showToast('Erreur : suppression impossible.'); });
+        });
       });
     });
   }
@@ -1277,12 +1297,13 @@
           if(!stageObj) return;
           var used = roadmapForClient(client.id).some(function(it){ return it.stage === stageObj.name; });
           if(used){ showToast('Déplacez d\'abord les tâches de cette colonne.'); return; }
-          if(!confirm('Supprimer la colonne « ' + roadmapStageLabel(stageObj.name) + ' » ?')) return;
-          apiFetch('/rest/v1/roadmap_stages?id=eq.' + stageObj.id, { method:'DELETE' })
-            .then(function(r){ if(!r.ok) throw new Error();
-              cache.roadmapStages = cache.roadmapStages.filter(function(s){ return s.id !== stageObj.id; });
-              renderRmKanban();
-            }).catch(function(){ showToast('Erreur : colonne non supprimée.'); });
+          confirmDialog('Supprimer la colonne « ' + roadmapStageLabel(stageObj.name) + ' » ?', function(){
+            apiFetch('/rest/v1/roadmap_stages?id=eq.' + stageObj.id, { method:'DELETE' })
+              .then(function(r){ if(!r.ok) throw new Error();
+                cache.roadmapStages = cache.roadmapStages.filter(function(s){ return s.id !== stageObj.id; });
+                renderRmKanban();
+              }).catch(function(){ showToast('Erreur : colonne non supprimée.'); });
+          });
         });
       });
       var addColBtn = overlay.querySelector('#rmAddColBtn');
@@ -1367,13 +1388,14 @@
     });
     var delBtn = overlay.querySelector('#tdDelete');
     if(delBtn) delBtn.addEventListener('click', function(){
-      if(!confirm('Supprimer cette tâche ?')) return;
-      apiFetch('/rest/v1/roadmap_items?id=eq.' + itemId, { method:'DELETE' })
-        .then(function(r){ if(!r.ok) throw new Error();
-          cache.roadmap = cache.roadmap.filter(function(x){ return x.id !== itemId; });
-          document.body.removeChild(overlay);
-          if(onDone) onDone();
-        }).catch(function(){ showToast('Erreur : suppression impossible.'); });
+      confirmDialog('Supprimer cette tâche ? Cette action est irréversible.', function(){
+        apiFetch('/rest/v1/roadmap_items?id=eq.' + itemId, { method:'DELETE' })
+          .then(function(r){ if(!r.ok) throw new Error();
+            cache.roadmap = cache.roadmap.filter(function(x){ return x.id !== itemId; });
+            document.body.removeChild(overlay);
+            if(onDone) onDone();
+          }).catch(function(){ showToast('Erreur : suppression impossible.'); });
+      });
     });
   }
 
@@ -1584,10 +1606,11 @@
         .catch(function(){ showToast('Erreur : projet non enregistré.'); });
     });
     overlay.querySelector('#projModalDelete').addEventListener('click', function(){
-      if(!confirm('Supprimer ce projet ?')) return;
-      apiFetch('/rest/v1/projects?id=eq.' + p.id, { method:'DELETE' })
-        .then(function(r){ if(!r.ok) throw new Error(); cache.projects = cache.projects.filter(function(x){ return x.id !== p.id; }); renderProjects(); renderOverview(); document.body.removeChild(overlay); showToast('Projet supprimé.'); })
-        .catch(function(){ showToast('Erreur : suppression impossible.'); });
+      confirmDialog('Supprimer ce projet ? Toutes ses tâches perdront leur rattachement. Cette action est irréversible.', function(){
+        apiFetch('/rest/v1/projects?id=eq.' + p.id, { method:'DELETE' })
+          .then(function(r){ if(!r.ok) throw new Error(); cache.projects = cache.projects.filter(function(x){ return x.id !== p.id; }); renderProjects(); renderOverview(); document.body.removeChild(overlay); showToast('Projet supprimé.'); })
+          .catch(function(){ showToast('Erreur : suppression impossible.'); });
+      });
     });
   }
 
