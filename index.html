@@ -383,18 +383,19 @@
           <button class="view-toggle-btn" data-tasks-view="list">Liste</button>
         </div>
       </div>
-      <div class="funnel-fields-row" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;">
+      <div class="funnel-fields-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:18px;">
         <div class="field" style="margin-bottom:0;"><label>Client</label><select id="tasksFilterClient"><option value="">Tous les clients</option></select></div>
         <div class="field" style="margin-bottom:0;"><label>Projet</label><select id="tasksFilterProject"><option value="">Tous les projets</option></select></div>
-      </div>
-      <div class="field" id="tasksDeadlineRangeRow" style="max-width:200px;margin-bottom:18px;">
-        <label>Deadline</label>
-        <select id="tasksDeadlineDays">
-          <option value="3">3 jours</option>
-          <option value="7" selected>7 jours</option>
-          <option value="15">15 jours</option>
-          <option value="30">1 mois</option>
-        </select>
+        <div class="field" id="tasksDeadlineRangeRow" style="margin-bottom:0;">
+          <label>Deadline</label>
+          <select id="tasksDeadlineDays">
+            <option value="" selected>Tout</option>
+            <option value="3">3 jours</option>
+            <option value="7">7 jours</option>
+            <option value="15">15 jours</option>
+            <option value="30">1 mois</option>
+          </select>
+        </div>
       </div>
       <div class="kanban" id="tasksKanban"></div>
       <div class="table-wrap plaque" id="tasksListWrap" style="padding:6px 0;" hidden>
@@ -1627,7 +1628,7 @@
   });
 
   /* ---------------- Tâches (centralisé) ---------------- */
-  var tasksFilters = { client:'', project:'', days:7 };
+  var tasksFilters = { client:'', project:'', days:null };
   var tasksViewMode = 'kanban';
 
   function populateTasksFilters(){
