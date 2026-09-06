@@ -1014,6 +1014,7 @@
         '<div class="modal-tabs">' +
           '<button class="modal-tab" data-tab="infos">Infos</button>' +
           '<button class="modal-tab" data-tab="onboarding">Onboarding</button>' +
+          '<button class="modal-tab" data-tab="projet">Projet</button>' +
           '<button class="modal-tab" data-tab="espace">Espace client</button>' +
         '</div>' +
 
@@ -1038,6 +1039,13 @@
           (c.onboarding_token ? onboardingTabHtml(c, cfg, tasks, formTaskIdx) : '<p class="empty-note" style="margin-bottom:16px;">Aucun lien généré pour ce client.</p><button class="btn btn-accent btn-sm" id="genLinkBtn">Générer un lien d\'onboarding</button>') +
         '</div>' +
 
+        '<div class="tab-panel" data-tab-panel="projet" hidden>' +
+          (projects.length ?
+            '<div class="field"><label>Sélectionner un projet</label><select id="tabProjectSelect">' + projects.map(function(p){ return '<option value="' + p.id + '">' + escapeHtml(p.name) + '</option>'; }).join('') + '</select></div>' +
+            '<div id="tabProjectFields">' + projectFieldsHtml(projects[0], 'tabProj') + '</div>'
+          : '<p class="empty-note">Aucun projet pour ce client — créez-en un depuis l\'onglet Projets.</p>') +
+        '</div>' +
+
         '<div class="tab-panel" data-tab-panel="espace" hidden>' +
           espaceTabHtml(c, cfg) +
         '</div>' +
@@ -1054,6 +1062,27 @@
     }
     overlay.querySelectorAll('.modal-tab').forEach(function(b){ b.addEventListener('click', function(){ switchTab(b.dataset.tab); }); });
     switchTab(startTab || 'infos');
+
+    var tabProjectSelect = overlay.querySelector('#tabProjectSelect');
+    if(tabProjectSelect){
+      var bindCurrentTabProject = function(){
+        var p = projects.find(function(x){ return x.id === tabProjectSelect.value; });
+        if(!p) return;
+        bindProjectFields(overlay, 'tabProj', function(){
+          var payload = readProjectFields(overlay, 'tabProj');
+          apiFetch('/rest/v1/projects?id=eq.' + p.id, { method:'PATCH', body: JSON.stringify(payload) })
+            .then(function(r){ if(!r.ok) throw new Error(); Object.assign(p, payload); showToast('Projet mis à jour.'); })
+            .catch(function(){ showToast('Erreur : projet non enregistré.'); });
+        });
+      };
+      bindCurrentTabProject();
+      tabProjectSelect.addEventListener('change', function(){
+        var p = projects.find(function(x){ return x.id === tabProjectSelect.value; });
+        if(!p) return;
+        overlay.querySelector('#tabProjectFields').innerHTML = projectFieldsHtml(p, 'tabProj');
+        bindCurrentTabProject();
+      });
+    }
 
     overlay.querySelector('#modalNotes').addEventListener('blur', function(){
       var notes = overlay.querySelector('#modalNotes').value;
@@ -1114,6 +1143,7 @@
 
       '<div class="onb-subhead">Espace client</div>' +
       '<div class="field"><label>Message de briefing</label><textarea id="onbBriefing">' + escapeHtml(cfg.briefing || '') + '</textarea></div>' +
+      '<div class="field"><label>Vidéo de bienvenue (dashboard) <span style="text-transform:none;font-weight:400;">— lien Screen Studio</span></label><input type="text" id="onbWelcomeVideo" placeholder="https://screen.studio/share/…" value="' + escapeHtml(cfg.welcome_video || '') + '"></div>' +
       '<div class="onb-field-row"><div class="field"><label>Libellé de la tâche "formulaire"</label><input type="text" id="onbFormLabel" value="' + escapeHtml(tasks[formTaskIdx] ? tasks[formTaskIdx].label : '') + '"></div><div class="field"><label>Lien du formulaire</label><input type="text" id="onbFormLink" value="' + escapeHtml(tasks[formTaskIdx] ? (tasks[formTaskIdx].link || '') : '') + '"></div></div>'
     );
   }
@@ -1125,19 +1155,10 @@
     var roadmapStages = roadmapStagesForClient(c.id);
     var reports = reportsForClient(c.id);
     var invoices = invoicesForClient(c.id);
-    var clientProjects = projectsForClient(c.id);
-    var firstProject = clientProjects[0] || null;
     return (
       '<p class="lead" style="color:var(--ink-dim);font-size:13.5px;margin:0 0 18px;">' + escapeHtml(cfg.briefing || 'Aucun message de briefing défini.') + '</p>' +
 
-      '<div class="modal-section" style="margin-top:0;padding-top:0;border-top:none;"><h4>Projet</h4>' +
-        (clientProjects.length ?
-          '<div class="field"><label>Sélectionner un projet</label><select id="espaceProjectSelect">' + clientProjects.map(function(p){ return '<option value="' + p.id + '">' + escapeHtml(p.name) + '</option>'; }).join('') + '</select></div>' +
-          '<div id="espaceProjectFields">' + projectFieldsHtml(firstProject, 'espaceProj') + '</div>'
-        : '<p class="empty-note">Aucun projet pour ce client — créez-en un depuis l\'onglet Projets.</p>') +
-      '</div>' +
-
-      '<div class="modal-section"><h4>Roadmap</h4>' +
+      '<div class="modal-section" style="margin-top:0;padding-top:0;border-top:none;"><h4>Roadmap</h4>' +
         '<p style="font-size:13.5px;color:var(--ink-dim);margin:0 0 14px;">' + roadmap.length + ' tâche' + (roadmap.length !== 1 ? 's' : '') + ' · ' + roadmapStages.length + ' colonne' + (roadmapStages.length !== 1 ? 's' : '') + '</p>' +
         '<div class="detail-actions" style="margin-top:0;">' +
           '<button class="btn btn-outline btn-sm" id="openRoadmapBtn">Ouvrir la roadmap (plein écran)</button>' +
@@ -1147,7 +1168,7 @@
 
       '<div class="modal-section"><h4>Rapports envoyés (' + reports.length + ')</h4>' +
         (reports.length ? reports.slice(0,3).map(function(r){
-          return '<div class="mini-row"><div><div class="m-title">' + escapeHtml(r.title) + '</div><div class="m-sub">' + formatDate(r.created_at) + (r.sent_at ? '' : ' · brouillon') + '</div></div></div>';
+          return '<div class="mini-row" data-report-id="' + r.id + '" style="cursor:pointer;"><div><div class="m-title">' + escapeHtml(r.title) + '</div><div class="m-sub">' + formatDate(r.created_at) + (r.sent_at ? '' : ' · brouillon') + '</div></div></div>';
         }).join('') : '<p class="empty-note">Aucun rapport envoyé pour le moment.</p>') +
       '</div>' +
 
@@ -1202,6 +1223,7 @@
         },
         contract: { url: overlay.querySelector('#onbContractUrl').value },
         briefing: overlay.querySelector('#onbBriefing').value,
+        welcome_video: overlay.querySelector('#onbWelcomeVideo').value.trim() || null,
         tasks: [
           { label:'Paiement effectué', type:'payment', done: !!(c.onboarding_config.tasks && c.onboarding_config.tasks[0] && c.onboarding_config.tasks[0].done) },
           { label:'Contrat signé', type:'contract', done: !!(c.onboarding_config.tasks && c.onboarding_config.tasks[1] && c.onboarding_config.tasks[1].done) },
@@ -1216,37 +1238,22 @@
         }).catch(function(){ showToast('Erreur : onboarding non enregistré.'); });
     }
     overlay.querySelector('#onbStageSelect').addEventListener('change', saveOnboarding);
-    ['onbIntroTitle','onbIntroBody','onbOfferTitle','onbOfferPrice','onbOfferBenefits','onbPaymentLink','onbIban','onbBic','onbAccountHolder','onbContractUrl','onbBriefing','onbFormLabel','onbFormLink'].forEach(function(id){
+    ['onbIntroTitle','onbIntroBody','onbOfferTitle','onbOfferPrice','onbOfferBenefits','onbPaymentLink','onbIban','onbBic','onbAccountHolder','onbContractUrl','onbBriefing','onbWelcomeVideo','onbFormLabel','onbFormLink'].forEach(function(id){
       overlay.querySelector('#' + id).addEventListener('blur', saveOnboarding);
     });
   }
 
   function bindEspaceTab(overlay, c){
-    var espaceProjectSelect = overlay.querySelector('#espaceProjectSelect');
-    if(espaceProjectSelect){
-      var espaceClientProjects = projectsForClient(c.id);
-      var bindCurrentEspaceProject = function(){
-        var p = espaceClientProjects.find(function(x){ return x.id === espaceProjectSelect.value; });
-        if(!p) return;
-        bindProjectFields(overlay, 'espaceProj', function(){
-          var payload = readProjectFields(overlay, 'espaceProj');
-          apiFetch('/rest/v1/projects?id=eq.' + p.id, { method:'PATCH', body: JSON.stringify(payload) })
-            .then(function(r){ if(!r.ok) throw new Error(); Object.assign(p, payload); showToast('Projet mis à jour.'); })
-            .catch(function(){ showToast('Erreur : projet non enregistré.'); });
-        });
-      };
-      bindCurrentEspaceProject();
-      espaceProjectSelect.addEventListener('change', function(){
-        var p = espaceClientProjects.find(function(x){ return x.id === espaceProjectSelect.value; });
-        if(!p) return;
-        overlay.querySelector('#espaceProjectFields').innerHTML = projectFieldsHtml(p, 'espaceProj');
-        bindCurrentEspaceProject();
-      });
-    }
     var openRoadmapBtn = overlay.querySelector('#openRoadmapBtn');
     if(openRoadmapBtn) openRoadmapBtn.addEventListener('click', function(){ openRoadmapKanban(c); });
     var openReportBtn = overlay.querySelector('#openReportBtn');
     if(openReportBtn) openReportBtn.addEventListener('click', function(){ openReportModal(c, overlay); });
+    overlay.querySelectorAll('[data-report-id]').forEach(function(row){
+      row.addEventListener('click', function(){
+        var r = reportsForClient(c.id).find(function(x){ return x.id === row.dataset.reportId; });
+        if(r) openReportPreview(r);
+      });
+    });
 
     function refreshEspaceTab(){
       if(overlay.parentNode) document.body.removeChild(overlay);
@@ -1601,6 +1608,29 @@
   }
 
   /* ---------------- Génération de rapport (IA) ---------------- */
+  function openReportPreview(r){
+    var tasks = Array.isArray(r.tasks_snapshot) ? r.tasks_snapshot : [];
+    var paragraphs = (r.content || '').split(/\n\s*\n/).filter(Boolean);
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-panel plaque xwide">' +
+        '<div class="modal-head"><div><span class="eyebrow">Rapport</span><h2 style="margin-top:8px;">' + escapeHtml(r.title) + '</h2></div><button class="modal-close" id="repPreviewClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
+        (r.period_start && r.period_end ? '<p style="font-family:var(--font-mono);font-size:12px;color:var(--ink-faint);margin:0 0 18px;">Du ' + formatDate(r.period_start) + ' au ' + formatDate(r.period_end) + '</p>' : '') +
+        paragraphs.map(function(p){ return '<p style="font-size:14px;line-height:1.65;margin:0 0 14px;">' + escapeHtml(p) + '</p>'; }).join('') +
+        (tasks.length ? '<div class="modal-section"><h4>Livrables (' + tasks.length + ')</h4>' +
+          tasks.map(function(t){
+            return '<div class="mini-row"><div><div class="m-title">' + escapeHtml(t.title) + '</div>' + (t.description ? '<div class="m-sub">' + escapeHtml(t.description) + '</div>' : '') + '</div>' +
+              (t.video_link ? '<a class="btn btn-outline btn-sm" href="' + escapeHtml(t.video_link) + '" target="_blank" rel="noopener">Vidéo ↗</a>' : '') +
+            '</div>';
+          }).join('') +
+        '</div>' : '') +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e){ if(e.target === overlay) document.body.removeChild(overlay); });
+    overlay.querySelector('#repPreviewClose').addEventListener('click', function(){ document.body.removeChild(overlay); });
+  }
+
   function openReportModal(client, parentOverlay){
     var items = roadmapForClient(client.id).slice().sort(function(a, b){ return scopeRank(a.scope) - scopeRank(b.scope); });
     var today = new Date().toISOString().slice(0,10);
@@ -1773,7 +1803,7 @@
       '<div class="field"><label>Résumé <span style="text-transform:none;font-weight:400;">(visible par le client)</span></label><textarea id="' + prefix + 'Desc" placeholder="En une ou deux phrases, de quoi parle ce projet.">' + escapeHtml(p.description || '') + '</textarea></div>' +
       '<div class="field"><label>Briefing projet <span style="text-transform:none;font-weight:400;">(visible par le client)</span></label><textarea id="' + prefix + 'Briefing" placeholder="Contexte, objectifs, ce qu\'il faut savoir sur ce projet…">' + escapeHtml(p.briefing || '') + '</textarea></div>' +
       '<div class="field"><label>Détails techniques <span style="text-transform:none;font-weight:400;">(visible par le client)</span></label><textarea id="' + prefix + 'Technical" placeholder="Architecture, choix techniques, contraintes…">' + escapeHtml(p.technical_details || '') + '</textarea></div>' +
-      '<div class="onb-field-row"><div class="field"><label>Stack technique</label><input type="text" id="' + prefix + 'Stack" placeholder="React, Supabase, Node…" value="' + escapeHtml(p.tech_stack || '') + '"></div><div class="field"><label>Outils utilisés</label><input type="text" id="' + prefix + 'Tools" placeholder="Notion, Figma, Slack…" value="' + escapeHtml(p.tools_used || '') + '"></div></div>'
+      '<div class="field"><label>Outils utilisés</label><input type="text" id="' + prefix + 'Tools" placeholder="Notion, Figma, Slack…" value="' + escapeHtml(p.tools_used || '') + '"></div>'
     );
   }
   function readProjectFields(root, prefix){
@@ -1784,13 +1814,12 @@
       description: root.querySelector('#' + prefix + 'Desc').value,
       briefing: root.querySelector('#' + prefix + 'Briefing').value,
       technical_details: root.querySelector('#' + prefix + 'Technical').value,
-      tech_stack: root.querySelector('#' + prefix + 'Stack').value,
       tools_used: root.querySelector('#' + prefix + 'Tools').value
     };
   }
   function bindProjectFields(root, prefix, onSave){
     ['Status','Start','Target'].forEach(function(suffix){ root.querySelector('#' + prefix + suffix).addEventListener('change', onSave); });
-    ['Desc','Briefing','Technical','Stack','Tools'].forEach(function(suffix){ root.querySelector('#' + prefix + suffix).addEventListener('blur', onSave); });
+    ['Desc','Briefing','Technical','Tools'].forEach(function(suffix){ root.querySelector('#' + prefix + suffix).addEventListener('blur', onSave); });
   }
 
   function openProjectModal(id){

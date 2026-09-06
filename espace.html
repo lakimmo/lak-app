@@ -147,6 +147,14 @@
   .dash-grid{ display:grid; grid-template-columns:1.3fr 1fr; gap:20px; align-items:start; }
   @media (max-width:900px){ .dash-grid{ grid-template-columns:1fr; } }
   .dash-card{ padding:22px; margin-bottom:20px; }
+  .contact-fab{ position:fixed; right:24px; bottom:24px; z-index:400; display:flex; flex-direction:column; align-items:flex-end; gap:12px; }
+  .contact-fab-btn{ width:54px; height:54px; border-radius:50%; background:var(--accent); color:#fff; border:none; box-shadow:var(--shadow-pop); cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .contact-fab-btn svg{ width:22px; height:22px; }
+  .contact-fab-btn:hover{ background:#e85f13; }
+  .contact-fab-menu{ display:flex; flex-direction:column; gap:8px; background:var(--bg-panel); border:1px solid var(--line); border-radius:var(--radius-md); box-shadow:var(--shadow-pop); padding:10px; min-width:200px; }
+  .contact-fab-option{ font-family:var(--font-body); font-size:13.5px; font-weight:600; text-align:left; padding:10px 12px; border-radius:var(--radius-sm); border:none; background:none; color:var(--ink); cursor:pointer; text-decoration:none; display:block; }
+  .contact-fab-option:hover{ background:var(--bg-hover); }
+  @media (max-width:640px){ .contact-fab{ right:16px; bottom:16px; } }
   .dash-card h3{ font-family:var(--font-mono); font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:14px; }
   .mini-num{ font-family:var(--font-mono); font-size:28px; font-weight:600; color:var(--accent); }
   .mini-label{ font-size:12.5px; color:var(--ink-dim); margin-top:4px; }
@@ -331,22 +339,30 @@
           <span class="eyebrow">Votre espace</span><h1 id="dashGreeting" style="margin-top:8px;"></h1>
         </div>
 
+        <div class="dash-card plaque" id="welcomeVideoCard" hidden>
+          <h3>À regarder en premier</h3>
+          <div id="welcomeVideoSlot"></div>
+        </div>
+
         <div class="briefing-card plaque" id="briefingCard" hidden>
           <span class="eyebrow">Message de l'équipe</span>
           <p id="dashBriefing"></p>
         </div>
 
-        <div class="dash-grid">
-          <div>
-            <div class="dash-card plaque" id="formCard" hidden><h3 id="formCardTitle">Formulaire à compléter</h3><p style="font-size:13.5px;color:var(--ink-dim);margin:0 0 14px;">Merci de le compléter pour la suite du projet.</p><a href="#" target="_blank" rel="noopener" class="btn btn-accent btn-sm" id="formLinkBtn">Remplir le formulaire</a></div>
-            <div class="dash-card plaque"><h3>Projet<span id="dashProjectsPlural"></span> en cours</h3><div id="dashProjectsList"></div><button class="btn btn-outline btn-sm" data-goto="projects" style="margin-top:14px;">Découvrir les projets →</button></div>
-            <div class="dash-card plaque"><h3>Tâches en cours</h3><div id="dashTasksList"></div></div>
-          </div>
-          <div>
-            <div class="dash-card plaque"><h3>Un besoin ?</h3><p style="font-size:13.5px;color:var(--ink-dim);margin:0 0 14px;">Écrivez-nous directement ou réservez un créneau.</p><div style="display:flex;gap:10px;flex-wrap:wrap;"><a href="https://wa.me/33769892601" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Écrire sur WhatsApp</a><button class="btn btn-outline btn-sm" data-goto="rdv">Prendre RDV</button></div></div>
-          </div>
-        </div>
+        <div class="dash-card plaque" id="formCard" hidden><h3 id="formCardTitle">Formulaire à compléter</h3><p style="font-size:13.5px;color:var(--ink-dim);margin:0 0 14px;">Merci de le compléter pour la suite du projet.</p><a href="#" target="_blank" rel="noopener" class="btn btn-accent btn-sm" id="formLinkBtn">Remplir le formulaire</a></div>
+        <div class="dash-card plaque"><h3>Projet<span id="dashProjectsPlural"></span> en cours</h3><div id="dashProjectsList"></div><button class="btn btn-outline btn-sm" data-goto="projects" style="margin-top:14px;">Découvrir les projets →</button></div>
+        <div class="dash-card plaque"><h3>Tâches en cours</h3><div id="dashTasksList"></div></div>
       </section>
+
+      <div class="contact-fab" id="contactFab">
+        <div class="contact-fab-menu" id="contactFabMenu" hidden>
+          <a href="https://wa.me/33769892601" target="_blank" rel="noopener" class="contact-fab-option">Écrire sur WhatsApp</a>
+          <button class="contact-fab-option" data-goto="rdv">Prendre RDV</button>
+        </div>
+        <button class="contact-fab-btn" id="contactFabBtn" title="Un besoin ?" aria-label="Un besoin ?">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </button>
+      </div>
 
       <section data-page-panel="roadmap" hidden>
         <div class="project-bar" id="projectInfoCard" hidden>
@@ -492,6 +508,25 @@
     var briefingCard = document.getElementById('briefingCard');
     briefingCard.hidden = !cfg.briefing;
     if(cfg.briefing) document.getElementById('dashBriefing').textContent = cfg.briefing;
+
+    var welcomeVideoCard = document.getElementById('welcomeVideoCard');
+    welcomeVideoCard.hidden = !cfg.welcome_video;
+    if(cfg.welcome_video){
+      var welcomeVideoSlot = document.getElementById('welcomeVideoSlot');
+      welcomeVideoSlot.innerHTML = '<div class="report-task-video-slot" id="welcomeVideoInner" data-video-link="' + escapeHtml(cfg.welcome_video) + '"></div>';
+      resolveVideoSrc(cfg.welcome_video, function(result){
+        var slot = document.getElementById('welcomeVideoInner');
+        if(!slot) return;
+        if(!result){
+          slot.outerHTML = '<a href="' + escapeHtml(cfg.welcome_video) + '" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Voir la vidéo ↗</a>';
+          return;
+        }
+        var mediaHtml = result.type === 'video'
+          ? '<video src="' + escapeHtml(result.src) + '" muted playsinline preload="metadata" tabindex="-1"></video>'
+          : '<iframe src="' + escapeHtml(result.src) + '" tabindex="-1"></iframe>';
+        slot.outerHTML = '<div class="report-task-video" data-embed-type="' + result.type + '" data-embed-src="' + escapeHtml(result.src) + '">' + mediaHtml + '<div class="rtv-expand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></div></div>';
+      });
+    }
 
     var tasks = Array.isArray(cfg.tasks) ? cfg.tasks : [];
     var formTask = tasks.find(function(t){ return t.type === 'form'; });
@@ -654,7 +689,6 @@
     if(!p) return;
     var pct = projectProgress(p.id);
     var tools = (p.tools_used || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
-    var stack = (p.tech_stack || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
 
     var overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
@@ -669,7 +703,6 @@
         (p.description ? '<div class="proj-detail-section"><h4>Résumé</h4><p>' + escapeHtml(p.description) + '</p></div>' : '') +
         (p.briefing ? '<div class="proj-detail-section"><h4>Briefing</h4><p>' + escapeHtml(p.briefing) + '</p></div>' : '') +
         (p.technical_details ? '<div class="proj-detail-section"><h4>Détails techniques</h4><p>' + escapeHtml(p.technical_details) + '</p></div>' : '') +
-        (stack.length ? '<div class="proj-detail-section"><h4>Stack technique</h4><div class="proj-detail-tags">' + stack.map(function(s){ return '<span>' + escapeHtml(s) + '</span>'; }).join('') + '</div></div>' : '') +
         (tools.length ? '<div class="proj-detail-section"><h4>Outils utilisés</h4><div class="proj-detail-tags">' + tools.map(function(s){ return '<span>' + escapeHtml(s) + '</span>'; }).join('') + '</div></div>' : '') +
         '<div class="detail-actions"><button class="btn btn-accent btn-sm" id="projDetailRoadmap">Voir dans la roadmap</button></div>' +
       '</div>';
@@ -1061,6 +1094,22 @@
     var root = document.documentElement;
     root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
   });
+
+  document.getElementById('welcomeVideoCard').addEventListener('click', function(e){
+    var v = e.target.closest('.report-task-video');
+    if(v) openVideoLightbox(v.dataset.embedType, v.dataset.embedSrc);
+  });
+
+  var contactFabBtn = document.getElementById('contactFabBtn');
+  var contactFabMenu = document.getElementById('contactFabMenu');
+  contactFabBtn.addEventListener('click', function(e){
+    e.stopPropagation();
+    contactFabMenu.hidden = !contactFabMenu.hidden;
+  });
+  document.addEventListener('click', function(e){
+    if(!contactFabMenu.hidden && !e.target.closest('.contact-fab')) contactFabMenu.hidden = true;
+  });
+  contactFabMenu.addEventListener('click', function(){ contactFabMenu.hidden = true; });
 
   load();
 })();

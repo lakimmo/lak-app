@@ -140,7 +140,7 @@
       <h1 id="doneGreeting">C'est prêt.</h1>
       <p class="lead">Votre espace client est maintenant actif : dashboard, roadmap, messages et prise de rendez-vous.</p>
     </div>
-    <div class="stage-nav center"><a href="#" class="btn btn-accent" id="goToEspace">Accéder à mon espace →</a></div>
+    <div class="stage-nav center"><button class="btn btn-outline" id="donePrev">← Précédent</button><a href="#" class="btn btn-accent" id="goToEspace">Accéder à mon espace →</a></div>
   </div>
 </div>
 
@@ -179,21 +179,45 @@
     });
   }
 
+  var STAGE_ORDER = ['intro', 'offer', 'contract', 'space'];
+  var lastData = null;
+  var maxStageIndex = 0;
+  var viewedStage = 'intro';
+
   function load(){
     if(!token){ showOnly('error'); return; }
     rpc('get_onboarding', { p_token: token }).then(function(data){
       if(!data || !data.name){ showOnly('error'); return; }
-      render(data);
+      lastData = data;
+      maxStageIndex = Math.max(0, STAGE_ORDER.indexOf(data.stage));
+      viewedStage = data.stage;
+      render(lastData, viewedStage);
     }).catch(function(){ showOnly('error'); });
   }
 
-  function goStage(newStage){
-    rpc('advance_onboarding', { p_token: token, p_stage: newStage }).then(load);
+  function goBack(){
+    var idx = STAGE_ORDER.indexOf(viewedStage);
+    if(idx <= 0) return;
+    viewedStage = STAGE_ORDER[idx - 1];
+    render(lastData, viewedStage);
   }
 
-  function render(data){
+  function goForward(target, extraRpc){
+    var targetIdx = STAGE_ORDER.indexOf(target);
+    var advance = targetIdx > maxStageIndex
+      ? rpc('advance_onboarding', { p_token: token, p_stage: target })
+      : Promise.resolve();
+    return Promise.all([advance, extraRpc || Promise.resolve()]).then(function(){
+      maxStageIndex = Math.max(maxStageIndex, targetIdx);
+      viewedStage = target;
+      render(lastData, viewedStage);
+    });
+  }
+
+  function render(data, showStage){
+    document.querySelectorAll('.stage-nav .btn').forEach(function(b){ b.disabled = false; });
     var cfg = data.config || {};
-    var stage = data.stage;
+    var stage = showStage || data.stage;
 
     if(stage === 'intro'){
       document.getElementById('introTitle').textContent = (cfg.intro && cfg.intro.title) || 'Bienvenue';
@@ -232,17 +256,18 @@
     }
   }
 
-  document.getElementById('introNext').addEventListener('click', function(e){ e.target.disabled = true; goStage('offer'); });
-  document.getElementById('offerPrev').addEventListener('click', function(){ goStage('intro'); });
+  document.getElementById('introNext').addEventListener('click', function(e){ e.target.disabled = true; goForward('offer'); });
+  document.getElementById('offerPrev').addEventListener('click', goBack);
   document.getElementById('offerNext').addEventListener('click', function(e){
     e.target.disabled = true;
-    Promise.all([ rpc('advance_onboarding', { p_token: token, p_stage: 'contract' }), rpc('set_onboarding_task_done', { p_token: token, p_task_index: 0, p_done: true }) ]).then(load);
+    goForward('contract', rpc('set_onboarding_task_done', { p_token: token, p_task_index: 0, p_done: true }));
   });
-  document.getElementById('contractPrev').addEventListener('click', function(){ goStage('offer'); });
+  document.getElementById('contractPrev').addEventListener('click', goBack);
   document.getElementById('contractNext').addEventListener('click', function(e){
     e.target.disabled = true;
-    Promise.all([ rpc('advance_onboarding', { p_token: token, p_stage: 'space' }), rpc('set_onboarding_task_done', { p_token: token, p_task_index: 1, p_done: true }) ]).then(load);
+    goForward('space', rpc('set_onboarding_task_done', { p_token: token, p_task_index: 1, p_done: true }));
   });
+  document.getElementById('donePrev').addEventListener('click', goBack);
 
   load();
 })();
