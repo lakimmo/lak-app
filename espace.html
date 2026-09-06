@@ -132,8 +132,6 @@
   .proj-detail-tags span{ font-family:var(--font-mono); font-size:11px; background:var(--line-soft); color:var(--ink-dim); padding:5px 10px; border-radius:var(--radius-sm); }
 
   /* ============ DASHBOARD ============ */
-  .briefing-card{ padding:26px 28px; margin-bottom:26px; border-left:4px solid var(--accent); }
-  .briefing-card p{ font-size:16.5px; line-height:1.65; color:var(--ink); margin:12px 0 0; }
   .project-bar{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:14px; }
   .project-details{ margin:0 0 38px; }
   .project-details summary{ cursor:pointer; font-family:var(--font-body); font-size:14px; color:var(--ink-dim); list-style:none; display:inline-flex; align-items:center; gap:8px; user-select:none; }
@@ -144,9 +142,9 @@
   .project-hero-meta{ display:flex; gap:10px; flex-wrap:wrap; }
   .project-hero-chip{ display:flex; align-items:center; gap:8px; background:var(--accent-soft); color:var(--accent-ink); padding:8px 14px; border-radius:var(--radius-sm); font-family:var(--font-mono); font-size:12px; }
   .project-hero-chip svg{ width:14px; height:14px; flex:none; }
-  .dash-grid{ display:grid; grid-template-columns:1.3fr 1fr; gap:20px; align-items:start; }
+  .dash-grid{ display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start; }
   @media (max-width:900px){ .dash-grid{ grid-template-columns:1fr; } }
-  .dash-card{ padding:22px; margin-bottom:20px; }
+  .dash-card{ padding:22px; }
   .contact-fab{ position:fixed; right:24px; bottom:24px; z-index:400; display:flex; flex-direction:column; align-items:flex-end; gap:12px; }
   .contact-fab-btn{ width:54px; height:54px; border-radius:50%; background:var(--accent); color:#fff; border:none; box-shadow:var(--shadow-pop); cursor:pointer; display:flex; align-items:center; justify-content:center; }
   .contact-fab-btn svg{ width:22px; height:22px; }
@@ -339,19 +337,15 @@
           <span class="eyebrow">Votre espace</span><h1 id="dashGreeting" style="margin-top:8px;"></h1>
         </div>
 
-        <div class="dash-card plaque" id="welcomeVideoCard" hidden>
-          <h3>À regarder en premier</h3>
-          <div id="welcomeVideoSlot"></div>
+        <div class="dash-grid">
+          <div class="dash-card plaque" id="welcomeVideoCard" hidden>
+            <h3>À regarder en premier</h3>
+            <div id="welcomeVideoSlot"></div>
+          </div>
+          <div class="dash-card plaque" id="formCard" hidden><h3 id="formCardTitle">Formulaire à compléter</h3><p style="font-size:13.5px;color:var(--ink-dim);margin:0 0 14px;">Merci de le compléter pour la suite du projet.</p><a href="#" target="_blank" rel="noopener" class="btn btn-accent btn-sm" id="formLinkBtn">Remplir le formulaire</a></div>
+          <div class="dash-card plaque"><h3>Projet<span id="dashProjectsPlural"></span> en cours</h3><div id="dashProjectsList"></div><button class="btn btn-outline btn-sm" data-goto="projects" style="margin-top:14px;">Découvrir les projets →</button></div>
+          <div class="dash-card plaque"><h3>Tâches en cours</h3><div id="dashTasksList"></div></div>
         </div>
-
-        <div class="briefing-card plaque" id="briefingCard" hidden>
-          <span class="eyebrow">Message de l'équipe</span>
-          <p id="dashBriefing"></p>
-        </div>
-
-        <div class="dash-card plaque" id="formCard" hidden><h3 id="formCardTitle">Formulaire à compléter</h3><p style="font-size:13.5px;color:var(--ink-dim);margin:0 0 14px;">Merci de le compléter pour la suite du projet.</p><a href="#" target="_blank" rel="noopener" class="btn btn-accent btn-sm" id="formLinkBtn">Remplir le formulaire</a></div>
-        <div class="dash-card plaque"><h3>Projet<span id="dashProjectsPlural"></span> en cours</h3><div id="dashProjectsList"></div><button class="btn btn-outline btn-sm" data-goto="projects" style="margin-top:14px;">Découvrir les projets →</button></div>
-        <div class="dash-card plaque"><h3>Tâches en cours</h3><div id="dashTasksList"></div></div>
       </section>
 
       <div class="contact-fab" id="contactFab">
@@ -505,10 +499,6 @@
     document.getElementById('sideClientName').textContent = data.company || data.name || '';
     document.getElementById('dashGreeting').textContent = 'Bonjour ' + (data.name || '') + '.';
 
-    var briefingCard = document.getElementById('briefingCard');
-    briefingCard.hidden = !cfg.briefing;
-    if(cfg.briefing) document.getElementById('dashBriefing').textContent = cfg.briefing;
-
     var welcomeVideoCard = document.getElementById('welcomeVideoCard');
     welcomeVideoCard.hidden = !cfg.welcome_video;
     if(cfg.welcome_video){
@@ -531,8 +521,8 @@
     var tasks = Array.isArray(cfg.tasks) ? cfg.tasks : [];
     var formTask = tasks.find(function(t){ return t.type === 'form'; });
     var formCard = document.getElementById('formCard');
-    formCard.hidden = !(formTask && formTask.link);
-    if(formTask && formTask.link){
+    formCard.hidden = !(formTask && formTask.link && !formTask.done);
+    if(formTask && formTask.link && !formTask.done){
       document.getElementById('formCardTitle').textContent = formTask.label || 'Formulaire à compléter';
       document.getElementById('formLinkBtn').href = formTask.link;
     }

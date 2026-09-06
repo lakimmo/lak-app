@@ -1142,9 +1142,9 @@
       '<div class="field"><label>Lien du contrat à signer</label><input type="text" id="onbContractUrl" value="' + escapeHtml(cfg.contract && cfg.contract.url || '') + '"></div>' +
 
       '<div class="onb-subhead">Espace client</div>' +
-      '<div class="field"><label>Message de briefing</label><textarea id="onbBriefing">' + escapeHtml(cfg.briefing || '') + '</textarea></div>' +
       '<div class="field"><label>Vidéo de bienvenue (dashboard) <span style="text-transform:none;font-weight:400;">— lien Screen Studio</span></label><input type="text" id="onbWelcomeVideo" placeholder="https://screen.studio/share/…" value="' + escapeHtml(cfg.welcome_video || '') + '"></div>' +
-      '<div class="onb-field-row"><div class="field"><label>Libellé de la tâche "formulaire"</label><input type="text" id="onbFormLabel" value="' + escapeHtml(tasks[formTaskIdx] ? tasks[formTaskIdx].label : '') + '"></div><div class="field"><label>Lien du formulaire</label><input type="text" id="onbFormLink" value="' + escapeHtml(tasks[formTaskIdx] ? (tasks[formTaskIdx].link || '') : '') + '"></div></div>'
+      '<div class="onb-field-row"><div class="field"><label>Libellé de la tâche "formulaire"</label><input type="text" id="onbFormLabel" value="' + escapeHtml(tasks[formTaskIdx] ? tasks[formTaskIdx].label : '') + '"></div><div class="field"><label>Lien du formulaire</label><input type="text" id="onbFormLink" value="' + escapeHtml(tasks[formTaskIdx] ? (tasks[formTaskIdx].link || '') : '') + '"></div></div>' +
+      '<label style="display:flex;align-items:center;gap:8px;font-size:13.5px;margin:-8px 0 20px;cursor:pointer;"><input type="checkbox" id="onbFormDone"' + (tasks[formTaskIdx] && tasks[formTaskIdx].done ? ' checked' : '') + '> Déjà rempli <span style="text-transform:none;font-weight:400;color:var(--ink-faint);">— masque le bouton côté client</span></label>'
     );
   }
 
@@ -1156,8 +1156,6 @@
     var reports = reportsForClient(c.id);
     var invoices = invoicesForClient(c.id);
     return (
-      '<p class="lead" style="color:var(--ink-dim);font-size:13.5px;margin:0 0 18px;">' + escapeHtml(cfg.briefing || 'Aucun message de briefing défini.') + '</p>' +
-
       '<div class="modal-section" style="margin-top:0;padding-top:0;border-top:none;"><h4>Roadmap</h4>' +
         '<p style="font-size:13.5px;color:var(--ink-dim);margin:0 0 14px;">' + roadmap.length + ' tâche' + (roadmap.length !== 1 ? 's' : '') + ' · ' + roadmapStages.length + ' colonne' + (roadmapStages.length !== 1 ? 's' : '') + '</p>' +
         '<div class="detail-actions" style="margin-top:0;">' +
@@ -1222,12 +1220,11 @@
           account_holder: overlay.querySelector('#onbAccountHolder').value
         },
         contract: { url: overlay.querySelector('#onbContractUrl').value },
-        briefing: overlay.querySelector('#onbBriefing').value,
         welcome_video: overlay.querySelector('#onbWelcomeVideo').value.trim() || null,
         tasks: [
           { label:'Paiement effectué', type:'payment', done: !!(c.onboarding_config.tasks && c.onboarding_config.tasks[0] && c.onboarding_config.tasks[0].done) },
           { label:'Contrat signé', type:'contract', done: !!(c.onboarding_config.tasks && c.onboarding_config.tasks[1] && c.onboarding_config.tasks[1].done) },
-          { label: overlay.querySelector('#onbFormLabel').value, type:'form', link: overlay.querySelector('#onbFormLink').value, done: !!(c.onboarding_config.tasks && c.onboarding_config.tasks[2] && c.onboarding_config.tasks[2].done) }
+          { label: overlay.querySelector('#onbFormLabel').value, type:'form', link: overlay.querySelector('#onbFormLink').value, done: overlay.querySelector('#onbFormDone').checked }
         ]
       };
       apiFetch('/rest/v1/clients?id=eq.' + c.id, { method:'PATCH', body: JSON.stringify({ onboarding_config:newConfig, onboarding_stage:newStage }) })
@@ -1238,7 +1235,8 @@
         }).catch(function(){ showToast('Erreur : onboarding non enregistré.'); });
     }
     overlay.querySelector('#onbStageSelect').addEventListener('change', saveOnboarding);
-    ['onbIntroTitle','onbIntroBody','onbOfferTitle','onbOfferPrice','onbOfferBenefits','onbPaymentLink','onbIban','onbBic','onbAccountHolder','onbContractUrl','onbBriefing','onbWelcomeVideo','onbFormLabel','onbFormLink'].forEach(function(id){
+    overlay.querySelector('#onbFormDone').addEventListener('change', saveOnboarding);
+    ['onbIntroTitle','onbIntroBody','onbOfferTitle','onbOfferPrice','onbOfferBenefits','onbPaymentLink','onbIban','onbBic','onbAccountHolder','onbContractUrl','onbWelcomeVideo','onbFormLabel','onbFormLink'].forEach(function(id){
       overlay.querySelector('#' + id).addEventListener('blur', saveOnboarding);
     });
   }
