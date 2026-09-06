@@ -68,6 +68,8 @@
   .badge{ display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.05em; text-transform:uppercase; padding:4px 9px; border:1px solid currentColor; }
   .badge-neutral{ color:var(--ink-dim); }
   .badge-success{ color:var(--success); background:var(--success-soft); border-color:var(--success); }
+  .badge-warning{ color:var(--warning); background:var(--warning-soft); border-color:var(--warning); }
+  .badge-accent{ color:var(--accent-ink); background:var(--accent-soft); border-color:var(--accent); }
 
   .loading-state{ text-align:center; padding:100px 20px; font-family:var(--font-mono); font-size:13px; color:var(--ink-faint); }
   .error-plaque{ max-width:460px; margin:100px auto; text-align:center; padding:50px 30px; }
@@ -109,6 +111,56 @@
   .page-head p{ color:var(--ink-dim); font-size:13.5px; margin-top:6px; }
   .page-head.hero-head{ position:relative; overflow:hidden; border-radius:var(--radius-lg); padding:28px 30px; background:var(--bg-panel); border:1px solid var(--line); box-shadow:var(--shadow-card); }
   .page-head.hero-head > *{ position:relative; z-index:1; }
+
+  /* ============ PROJETS (page) ============ */
+  .view-toggle{ display:flex; gap:4px; background:var(--bg-panel); border:1px solid var(--line); border-radius:var(--radius-sm); padding:3px; flex:none; }
+  .view-toggle-btn{ border:none; background:none; padding:7px 14px; font-size:12.5px; font-weight:600; border-radius:calc(var(--radius-sm) - 3px); color:var(--ink-dim); cursor:pointer; font-family:var(--font-body); }
+  .view-toggle-btn.active{ background:var(--accent); color:#fff; }
+  .progress-track{ flex:1; height:6px; border-radius:999px; background:var(--line); overflow:hidden; }
+  .progress-fill{ height:100%; background:var(--accent); border-radius:999px; }
+  .proj-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:18px; }
+  .proj-card{ padding:22px; cursor:pointer; display:flex; flex-direction:column; gap:12px; transition:border-color .15s ease; }
+  .proj-card:hover{ border-color:var(--accent); }
+  .proj-card-top{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .proj-card h3{ font-size:17px; margin:0; text-wrap:balance; }
+  .proj-card p{ font-size:13px; color:var(--ink-dim); line-height:1.55; margin:0; flex:1; }
+  .proj-card-progress{ display:flex; align-items:center; gap:10px; }
+  .proj-card-progress span{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); flex:none; }
+  .proj-card-date{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-faint); }
+  .proj-list{ display:flex; flex-direction:column; gap:10px; }
+  .proj-list-row{ padding:16px 20px; display:grid; grid-template-columns:1.4fr 100px 1fr 110px 16px; align-items:center; gap:16px; cursor:pointer; transition:border-color .15s ease; }
+  .proj-list-row:hover{ border-color:var(--accent); }
+  .proj-list-row h4{ font-size:14.5px; margin:0; }
+  .proj-list-row .proj-list-progress{ display:flex; align-items:center; gap:8px; }
+  .proj-list-row .proj-list-progress span{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); flex:none; }
+  .proj-list-date{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-faint); }
+  .proj-list-row svg{ width:16px; height:16px; color:var(--ink-faint); }
+  .proj-timeline-group{ margin-bottom:34px; }
+  .proj-timeline-group:last-child{ margin-bottom:0; }
+  .proj-timeline-label{ font-family:var(--font-mono); font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--accent-ink); margin:0 0 16px; }
+  .proj-timeline-item{ display:flex; gap:20px; align-items:center; padding:22px; margin-bottom:14px; cursor:pointer; transition:border-color .15s ease; }
+  .proj-timeline-item:last-child{ margin-bottom:0; }
+  .proj-timeline-item:hover{ border-color:var(--accent); }
+  .proj-ring{ width:60px; height:60px; border-radius:50%; background:conic-gradient(var(--accent) calc(var(--pct)*1%), var(--line) 0); display:flex; align-items:center; justify-content:center; flex:none; }
+  .proj-ring span{ width:46px; height:46px; border-radius:50%; background:var(--bg-panel); display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:12px; color:var(--ink); }
+  .proj-timeline-body{ flex:1; min-width:0; }
+  .proj-timeline-body h3{ font-size:19px; margin:0 0 4px; text-wrap:balance; }
+  .proj-timeline-body p{ font-size:13.5px; color:var(--ink-dim); margin:0 0 8px; line-height:1.55; }
+  .proj-timeline-date{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-faint); }
+  @media (max-width:640px){
+    .proj-list-row{ grid-template-columns:1fr auto; grid-template-areas:"name arrow" "progress progress" "date date"; row-gap:8px; }
+    .proj-list-row h4{ grid-area:name; }
+    .proj-list-row svg{ grid-area:arrow; }
+    .proj-list-row .proj-list-progress{ grid-area:progress; }
+    .proj-list-row .proj-list-date{ grid-area:date; }
+    .proj-timeline-item{ flex-direction:column; align-items:flex-start; }
+  }
+  .proj-detail-section{ margin-top:22px; padding-top:22px; border-top:1px solid var(--line); }
+  .proj-detail-section:first-of-type{ margin-top:0; padding-top:0; border-top:none; }
+  .proj-detail-section h4{ font-family:var(--font-mono); font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-dim); margin:0 0 10px; }
+  .proj-detail-section p{ font-size:14px; line-height:1.65; color:var(--ink); margin:0; white-space:pre-line; }
+  .proj-detail-tags{ display:flex; flex-wrap:wrap; gap:8px; }
+  .proj-detail-tags span{ font-family:var(--font-mono); font-size:11px; background:var(--line-soft); color:var(--ink-dim); padding:5px 10px; border-radius:var(--radius-sm); }
 
   /* ============ DASHBOARD ============ */
   .briefing-card{ padding:26px 28px; margin-bottom:26px; border-left:4px solid var(--accent); }
@@ -285,6 +337,7 @@
       <nav class="side-nav">
         <button class="side-link active" data-page="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="8" height="8"/><rect x="13" y="3" width="8" height="5"/><rect x="13" y="12" width="8" height="9"/><rect x="3" y="15" width="8" height="6"/></svg> Dashboard</button>
         <button class="side-link" data-page="roadmap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V5M4 5l6 4-6 4M14 19V9M14 9l6 4-6 4"/></svg> Roadmap</button>
+        <button class="side-link" data-page="projects"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h8M8 17h4"/></svg> Projet</button>
         <button class="side-link" data-page="reports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M9 12h6M9 16h6M9 8h2"/></svg> Rapports</button>
         <div class="side-nav-divider"></div>
         <button class="side-link" data-page="rdv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="16" rx="1"/><path d="M3 9h18M8 3v4M16 3v4"/></svg> Rendez-vous</button>
@@ -317,7 +370,7 @@
         <div class="dash-grid">
           <div>
             <div class="dash-card plaque" id="formCard" hidden><h3 id="formCardTitle">Formulaire à compléter</h3><p style="font-size:13.5px;color:var(--ink-dim);margin:0 0 14px;">Merci de le compléter pour la suite du projet.</p><a href="#" target="_blank" rel="noopener" class="btn btn-accent btn-sm" id="formLinkBtn">Remplir le formulaire</a></div>
-            <div class="dash-card plaque"><h3>Projet<span id="dashProjectsPlural"></span> en cours</h3><div id="dashProjectsList"></div></div>
+            <div class="dash-card plaque"><h3>Projet<span id="dashProjectsPlural"></span> en cours</h3><div id="dashProjectsList"></div><button class="btn btn-outline btn-sm" data-goto="projects" style="margin-top:14px;">Découvrir les projets →</button></div>
             <div class="dash-card plaque"><h3>Tâches en cours</h3><div id="dashTasksList"></div></div>
           </div>
           <div>
@@ -337,13 +390,24 @@
             <div class="project-hero-chip" id="projectInfoDeadline" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg><span></span></div>
           </div>
         </div>
-        <details class="project-details" id="projectInfoDetails">
-          <summary>Description du projet</summary>
-          <p class="project-desc" id="projectInfoDesc"></p>
-        </details>
         <div class="page-head"><span class="eyebrow">Suivi de projet</span><h1 style="margin-top:8px;">Roadmap</h1></div>
         <p class="empty-note" id="noProjectsNote" hidden>Aucun projet pour le moment — contactez votre interlocuteur LAK.</p>
         <div class="kanban" id="kanban"></div>
+      </section>
+
+      <section data-page-panel="projects" hidden>
+        <div class="page-head" style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+          <div><span class="eyebrow">Vue d'ensemble</span><h1 style="margin-top:8px;">Projet</h1><p>Tous vos projets, en cours et passés.</p></div>
+          <div class="view-toggle" id="projectsDesignToggle">
+            <button class="view-toggle-btn active" data-design="1">Design 1</button>
+            <button class="view-toggle-btn" data-design="2">Design 2</button>
+            <button class="view-toggle-btn" data-design="3">Design 3</button>
+          </div>
+        </div>
+        <p class="empty-note" id="noProjectsNote2" hidden>Aucun projet pour le moment — contactez votre interlocuteur LAK.</p>
+        <div id="projectsDesign1"></div>
+        <div id="projectsDesign2" hidden></div>
+        <div id="projectsDesign3" hidden></div>
       </section>
 
       <section data-page-panel="reports" hidden>
@@ -554,6 +618,7 @@
         document.querySelectorAll('[data-page-panel]').forEach(function(p){ p.hidden = (p.dataset.pagePanel !== btn.dataset.page); });
         if(btn.dataset.page === 'reports') loadReports();
         if(btn.dataset.page === 'admin') loadInvoices();
+        if(btn.dataset.page === 'projects') renderProjectsPage();
       };
     });
     document.querySelectorAll('[data-goto]').forEach(function(el){
@@ -573,13 +638,8 @@
   }
   function renderProjectInfoCard(projects){
     var datesRow = document.getElementById('projectInfoDatesRow');
-    var detailsEl = document.getElementById('projectInfoDetails');
-    var descEl = document.getElementById('projectInfoDesc');
     var p = currentProjectId === 'all' ? null : projects.find(function(x){ return x.id === currentProjectId; });
-    detailsEl.open = false;
-    if(!p){ datesRow.hidden = true; detailsEl.hidden = true; return; }
-    detailsEl.hidden = false;
-    descEl.textContent = p.description || 'Aucune description pour ce projet.';
+    if(!p){ datesRow.hidden = true; return; }
     var startEl = document.getElementById('projectInfoStart');
     startEl.hidden = !p.start_date;
     if(p.start_date) startEl.querySelector('span').textContent = 'Début ' + formatDate(p.start_date);
@@ -588,6 +648,132 @@
     if(p.target_date) deadlineEl.querySelector('span').textContent = 'Échéance ' + formatDate(p.target_date);
     datesRow.hidden = !(p.start_date || p.target_date);
   }
+
+  /* ---------------- Projet (page) ---------------- */
+  var projectsDesignMode = '1';
+  function projectStatusBadgeClass(status){ return status === 'termine' ? 'badge-success' : status === 'en_cours' ? 'badge-accent' : status === 'en_pause' ? 'badge-warning' : 'badge-neutral'; }
+  function projectProgress(projectId){
+    var items = (current.roadmap_items || []).filter(function(it){ return it.project_id === projectId; });
+    if(!items.length) return null;
+    var done = items.filter(function(it){ return it.completed_at; }).length;
+    return Math.round(done / items.length * 100);
+  }
+  function goToProjectRoadmap(projectId){
+    document.querySelector('.side-link[data-page="roadmap"]').click();
+    currentProjectId = projectId;
+    var projectSelect = document.getElementById('projectSelect');
+    projectSelect.value = projectId;
+    renderProjectInfoCard(current.projects || []);
+    renderKanban(current.roadmap_stages, itemsForCurrentProject());
+  }
+
+  function renderProjectsPage(){
+    var projects = current.projects || [];
+    document.getElementById('noProjectsNote2').hidden = !!projects.length;
+    renderProjectsDesign1(projects);
+    renderProjectsDesign2(projects);
+    renderProjectsDesign3(projects);
+    document.querySelectorAll('#projectsDesignToggle [data-design]').forEach(function(btn){
+      btn.onclick = function(){
+        projectsDesignMode = btn.dataset.design;
+        document.querySelectorAll('#projectsDesignToggle [data-design]').forEach(function(b){ b.classList.toggle('active', b === btn); });
+        ['1','2','3'].forEach(function(n){ document.getElementById('projectsDesign' + n).hidden = (n !== projectsDesignMode); });
+      };
+    });
+  }
+
+  function renderProjectsDesign1(projects){
+    var el = document.getElementById('projectsDesign1');
+    el.innerHTML = '<div class="proj-grid">' + projects.map(function(p){
+      var pct = projectProgress(p.id);
+      return '<div class="proj-card plaque" data-project-id="' + p.id + '">' +
+        '<div class="proj-card-top"><span class="badge ' + projectStatusBadgeClass(p.status) + '">' + escapeHtml(PROJECT_STATUS_LABELS[p.status] || p.status) + '</span></div>' +
+        '<h3>' + escapeHtml(p.name) + '</h3>' +
+        '<p>' + escapeHtml(p.description || 'Pas encore de résumé pour ce projet.') + '</p>' +
+        (pct !== null ? '<div class="proj-card-progress"><div class="progress-track"><div class="progress-fill" style="width:' + pct + '%;"></div></div><span>' + pct + '%</span></div>' : '') +
+        (p.target_date ? '<div class="proj-card-date">Échéance ' + formatDate(p.target_date) + '</div>' : '') +
+      '</div>';
+    }).join('') + '</div>';
+    el.querySelectorAll('[data-project-id]').forEach(function(card){
+      card.addEventListener('click', function(){ openProjectDetail(card.dataset.projectId); });
+    });
+  }
+
+  function renderProjectsDesign2(projects){
+    var el = document.getElementById('projectsDesign2');
+    el.innerHTML = '<div class="proj-list">' + projects.map(function(p){
+      var pct = projectProgress(p.id);
+      return '<div class="proj-list-row plaque" data-project-id="' + p.id + '">' +
+        '<h4>' + escapeHtml(p.name) + '</h4>' +
+        '<span class="badge ' + projectStatusBadgeClass(p.status) + '">' + escapeHtml(PROJECT_STATUS_LABELS[p.status] || p.status) + '</span>' +
+        '<div class="proj-list-progress">' + (pct !== null ? '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%;"></div></div><span>' + pct + '%</span>' : '<span>—</span>') + '</div>' +
+        '<div class="proj-list-date">' + (p.target_date ? formatDate(p.target_date) : '—') + '</div>' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>' +
+      '</div>';
+    }).join('') + '</div>';
+    el.querySelectorAll('[data-project-id]').forEach(function(row){
+      row.addEventListener('click', function(){ openProjectDetail(row.dataset.projectId); });
+    });
+  }
+
+  function renderProjectsDesign3(projects){
+    var el = document.getElementById('projectsDesign3');
+    var order = ['en_cours', 'cadrage', 'en_pause', 'termine'];
+    var groups = order.map(function(s){ return { status:s, items: projects.filter(function(p){ return p.status === s; }) }; }).filter(function(g){ return g.items.length; });
+    el.innerHTML = groups.map(function(g){
+      return '<div class="proj-timeline-group">' +
+        '<p class="proj-timeline-label">' + escapeHtml(PROJECT_STATUS_LABELS[g.status] || g.status) + '</p>' +
+        g.items.map(function(p){
+          var pct = projectProgress(p.id);
+          return '<div class="proj-timeline-item plaque" data-project-id="' + p.id + '">' +
+            '<div class="proj-ring" style="--pct:' + (pct || 0) + ';"><span>' + (pct !== null ? pct + '%' : '—') + '</span></div>' +
+            '<div class="proj-timeline-body">' +
+              '<h3>' + escapeHtml(p.name) + '</h3>' +
+              '<p>' + escapeHtml(p.description || 'Pas encore de résumé pour ce projet.') + '</p>' +
+              (p.target_date ? '<span class="proj-timeline-date">Échéance ' + formatDate(p.target_date) + '</span>' : '') +
+            '</div>' +
+          '</div>';
+        }).join('') +
+      '</div>';
+    }).join('');
+    el.querySelectorAll('[data-project-id]').forEach(function(item){
+      item.addEventListener('click', function(){ openProjectDetail(item.dataset.projectId); });
+    });
+  }
+
+  function openProjectDetail(id){
+    var p = (current.projects || []).find(function(x){ return x.id === id; });
+    if(!p) return;
+    var pct = projectProgress(p.id);
+    var tools = (p.tools_used || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+    var stack = (p.tech_stack || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-panel plaque">' +
+        '<div class="modal-head"><div><span class="eyebrow">Projet</span><h2 style="margin-top:8px;">' + escapeHtml(p.name) + '</h2></div><button class="modal-close" id="projDetailClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:22px;">' +
+          '<span class="badge ' + projectStatusBadgeClass(p.status) + '">' + escapeHtml(PROJECT_STATUS_LABELS[p.status] || p.status) + '</span>' +
+          (p.target_date ? '<span class="project-hero-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg><span>Échéance ' + formatDate(p.target_date) + '</span></span>' : '') +
+          (pct !== null ? '<span class="project-hero-chip"><span>' + pct + '% réalisé</span></span>' : '') +
+        '</div>' +
+        (p.description ? '<div class="proj-detail-section"><h4>Résumé</h4><p>' + escapeHtml(p.description) + '</p></div>' : '') +
+        (p.briefing ? '<div class="proj-detail-section"><h4>Briefing</h4><p>' + escapeHtml(p.briefing) + '</p></div>' : '') +
+        (p.technical_details ? '<div class="proj-detail-section"><h4>Détails techniques</h4><p>' + escapeHtml(p.technical_details) + '</p></div>' : '') +
+        (stack.length ? '<div class="proj-detail-section"><h4>Stack technique</h4><div class="proj-detail-tags">' + stack.map(function(s){ return '<span>' + escapeHtml(s) + '</span>'; }).join('') + '</div></div>' : '') +
+        (tools.length ? '<div class="proj-detail-section"><h4>Outils utilisés</h4><div class="proj-detail-tags">' + tools.map(function(s){ return '<span>' + escapeHtml(s) + '</span>'; }).join('') + '</div></div>' : '') +
+        '<div class="detail-actions"><button class="btn btn-accent btn-sm" id="projDetailRoadmap">Voir dans la roadmap</button></div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e){ if(e.target === overlay) document.body.removeChild(overlay); });
+    overlay.querySelector('#projDetailClose').addEventListener('click', function(){ document.body.removeChild(overlay); });
+    overlay.querySelector('#projDetailRoadmap').addEventListener('click', function(){
+      document.body.removeChild(overlay);
+      goToProjectRoadmap(p.id);
+    });
+  }
+
   function renderKanban(stages, items){
     var kanban = document.getElementById('kanban');
     kanban.innerHTML = stages.map(function(stage){

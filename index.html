@@ -1125,10 +1125,19 @@
     var roadmapStages = roadmapStagesForClient(c.id);
     var reports = reportsForClient(c.id);
     var invoices = invoicesForClient(c.id);
+    var clientProjects = projectsForClient(c.id);
+    var firstProject = clientProjects[0] || null;
     return (
       '<p class="lead" style="color:var(--ink-dim);font-size:13.5px;margin:0 0 18px;">' + escapeHtml(cfg.briefing || 'Aucun message de briefing défini.') + '</p>' +
 
-      '<div class="modal-section" style="margin-top:0;padding-top:0;border-top:none;"><h4>Roadmap</h4>' +
+      '<div class="modal-section" style="margin-top:0;padding-top:0;border-top:none;"><h4>Projet</h4>' +
+        (clientProjects.length ?
+          '<div class="field"><label>Sélectionner un projet</label><select id="espaceProjectSelect">' + clientProjects.map(function(p){ return '<option value="' + p.id + '">' + escapeHtml(p.name) + '</option>'; }).join('') + '</select></div>' +
+          '<div id="espaceProjectFields">' + projectFieldsHtml(firstProject, 'espaceProj') + '</div>'
+        : '<p class="empty-note">Aucun projet pour ce client — créez-en un depuis l\'onglet Projets.</p>') +
+      '</div>' +
+
+      '<div class="modal-section"><h4>Roadmap</h4>' +
         '<p style="font-size:13.5px;color:var(--ink-dim);margin:0 0 14px;">' + roadmap.length + ' tâche' + (roadmap.length !== 1 ? 's' : '') + ' · ' + roadmapStages.length + ' colonne' + (roadmapStages.length !== 1 ? 's' : '') + '</p>' +
         '<div class="detail-actions" style="margin-top:0;">' +
           '<button class="btn btn-outline btn-sm" id="openRoadmapBtn">Ouvrir la roadmap (plein écran)</button>' +
@@ -1213,6 +1222,27 @@
   }
 
   function bindEspaceTab(overlay, c){
+    var espaceProjectSelect = overlay.querySelector('#espaceProjectSelect');
+    if(espaceProjectSelect){
+      var espaceClientProjects = projectsForClient(c.id);
+      var bindCurrentEspaceProject = function(){
+        var p = espaceClientProjects.find(function(x){ return x.id === espaceProjectSelect.value; });
+        if(!p) return;
+        bindProjectFields(overlay, 'espaceProj', function(){
+          var payload = readProjectFields(overlay, 'espaceProj');
+          apiFetch('/rest/v1/projects?id=eq.' + p.id, { method:'PATCH', body: JSON.stringify(payload) })
+            .then(function(r){ if(!r.ok) throw new Error(); Object.assign(p, payload); showToast('Projet mis à jour.'); })
+            .catch(function(){ showToast('Erreur : projet non enregistré.'); });
+        });
+      };
+      bindCurrentEspaceProject();
+      espaceProjectSelect.addEventListener('change', function(){
+        var p = espaceClientProjects.find(function(x){ return x.id === espaceProjectSelect.value; });
+        if(!p) return;
+        overlay.querySelector('#espaceProjectFields').innerHTML = projectFieldsHtml(p, 'espaceProj');
+        bindCurrentEspaceProject();
+      });
+    }
     var openRoadmapBtn = overlay.querySelector('#openRoadmapBtn');
     if(openRoadmapBtn) openRoadmapBtn.addEventListener('click', function(){ openRoadmapKanban(c); });
     var openReportBtn = overlay.querySelector('#openReportBtn');
@@ -1735,11 +1765,38 @@
     });
   }
 
+  function projectFieldsHtml(p, prefix){
+    var statusOptions = Object.keys(PROJECT_STATUS_LABELS).map(function(s){ return '<option value="' + s + '"' + (s === p.status ? ' selected' : '') + '>' + PROJECT_STATUS_LABELS[s] + '</option>'; }).join('');
+    return (
+      '<div class="field"><label>Statut</label><select id="' + prefix + 'Status">' + statusOptions + '</select></div>' +
+      '<div class="onb-field-row"><div class="field"><label>Début</label><input type="date" id="' + prefix + 'Start" value="' + (p.start_date || '') + '"></div><div class="field"><label>Échéance</label><input type="date" id="' + prefix + 'Target" value="' + (p.target_date || '') + '"></div></div>' +
+      '<div class="field"><label>Résumé <span style="text-transform:none;font-weight:400;">(visible par le client)</span></label><textarea id="' + prefix + 'Desc" placeholder="En une ou deux phrases, de quoi parle ce projet.">' + escapeHtml(p.description || '') + '</textarea></div>' +
+      '<div class="field"><label>Briefing projet <span style="text-transform:none;font-weight:400;">(visible par le client)</span></label><textarea id="' + prefix + 'Briefing" placeholder="Contexte, objectifs, ce qu\'il faut savoir sur ce projet…">' + escapeHtml(p.briefing || '') + '</textarea></div>' +
+      '<div class="field"><label>Détails techniques <span style="text-transform:none;font-weight:400;">(visible par le client)</span></label><textarea id="' + prefix + 'Technical" placeholder="Architecture, choix techniques, contraintes…">' + escapeHtml(p.technical_details || '') + '</textarea></div>' +
+      '<div class="onb-field-row"><div class="field"><label>Stack technique</label><input type="text" id="' + prefix + 'Stack" placeholder="React, Supabase, Node…" value="' + escapeHtml(p.tech_stack || '') + '"></div><div class="field"><label>Outils utilisés</label><input type="text" id="' + prefix + 'Tools" placeholder="Notion, Figma, Slack…" value="' + escapeHtml(p.tools_used || '') + '"></div></div>'
+    );
+  }
+  function readProjectFields(root, prefix){
+    return {
+      status: root.querySelector('#' + prefix + 'Status').value,
+      start_date: root.querySelector('#' + prefix + 'Start').value || null,
+      target_date: root.querySelector('#' + prefix + 'Target').value || null,
+      description: root.querySelector('#' + prefix + 'Desc').value,
+      briefing: root.querySelector('#' + prefix + 'Briefing').value,
+      technical_details: root.querySelector('#' + prefix + 'Technical').value,
+      tech_stack: root.querySelector('#' + prefix + 'Stack').value,
+      tools_used: root.querySelector('#' + prefix + 'Tools').value
+    };
+  }
+  function bindProjectFields(root, prefix, onSave){
+    ['Status','Start','Target'].forEach(function(suffix){ root.querySelector('#' + prefix + suffix).addEventListener('change', onSave); });
+    ['Desc','Briefing','Technical','Stack','Tools'].forEach(function(suffix){ root.querySelector('#' + prefix + suffix).addEventListener('blur', onSave); });
+  }
+
   function openProjectModal(id){
     var p = cache.projects.find(function(x){ return x.id === id; });
     if(!p) return;
     var c = clientById(p.client_id);
-    var statusOptions = Object.keys(PROJECT_STATUS_LABELS).map(function(s){ return '<option value="' + s + '"' + (s === p.status ? ' selected' : '') + '>' + PROJECT_STATUS_LABELS[s] + '</option>'; }).join('');
 
     var overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
@@ -1747,12 +1804,7 @@
       '<div class="modal-panel plaque">' +
         '<div class="modal-head"><div><span class="eyebrow">Projet</span><h2 style="margin-top:8px;">' + escapeHtml(p.name) + '</h2></div><button class="modal-close" id="projModalClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
         '<div class="detail-grid"><div><span class="d-label">Client</span><span>' + (c ? escapeHtml(c.company || c.name) : '—') + '</span></div></div>' +
-        '<div class="field"><label>Statut</label><select id="projModalStatus">' + statusOptions + '</select></div>' +
-        '<div class="funnel-fields-row" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
-          '<div class="field"><label>Début</label><input type="date" id="projModalStart" value="' + (p.start_date || '') + '"></div>' +
-          '<div class="field"><label>Échéance</label><input type="date" id="projModalTarget" value="' + (p.target_date || '') + '"></div>' +
-        '</div>' +
-        '<div class="field"><label>Description <span style="text-transform:none;font-weight:400;">(visible par le client)</span></label><textarea id="projModalDesc">' + escapeHtml(p.description || '') + '</textarea></div>' +
+        projectFieldsHtml(p, 'projModal') +
         '<div class="onb-subhead">Notes internes <span style="text-transform:none;font-weight:400;color:var(--ink-faint);">— jamais visibles par le client</span></div>' +
         '<div class="field"><textarea id="projModalNote" placeholder="Contexte, historique, points de vigilance…">' + escapeHtml(p.internal_note || '') + '</textarea></div>' +
         '<div class="detail-actions">' +
@@ -1764,21 +1816,13 @@
     overlay.querySelector('#projModalClose').addEventListener('click', function(){ document.body.removeChild(overlay); });
 
     function saveProject(){
-      var payload = {
-        status: overlay.querySelector('#projModalStatus').value,
-        start_date: overlay.querySelector('#projModalStart').value || null,
-        target_date: overlay.querySelector('#projModalTarget').value || null,
-        description: overlay.querySelector('#projModalDesc').value,
-        internal_note: overlay.querySelector('#projModalNote').value
-      };
+      var payload = readProjectFields(overlay, 'projModal');
+      payload.internal_note = overlay.querySelector('#projModalNote').value;
       apiFetch('/rest/v1/projects?id=eq.' + p.id, { method:'PATCH', body: JSON.stringify(payload) })
         .then(function(r){ if(!r.ok) throw new Error(); Object.assign(p, payload); renderProjects(); renderOverview(); showToast('Projet mis à jour.'); })
         .catch(function(){ showToast('Erreur : projet non enregistré.'); });
     }
-    overlay.querySelector('#projModalStatus').addEventListener('change', saveProject);
-    overlay.querySelector('#projModalStart').addEventListener('change', saveProject);
-    overlay.querySelector('#projModalTarget').addEventListener('change', saveProject);
-    overlay.querySelector('#projModalDesc').addEventListener('blur', saveProject);
+    bindProjectFields(overlay, 'projModal', saveProject);
     overlay.querySelector('#projModalNote').addEventListener('blur', saveProject);
     overlay.querySelector('#projModalDelete').addEventListener('click', function(){
       confirmDialog('Supprimer ce projet ? Toutes ses tâches perdront leur rattachement. Cette action est irréversible.', function(){
