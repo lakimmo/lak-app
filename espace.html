@@ -113,9 +113,6 @@
   .page-head.hero-head > *{ position:relative; z-index:1; }
 
   /* ============ PROJETS (page) ============ */
-  .view-toggle{ display:flex; gap:4px; background:var(--bg-panel); border:1px solid var(--line); border-radius:var(--radius-sm); padding:3px; flex:none; }
-  .view-toggle-btn{ border:none; background:none; padding:7px 14px; font-size:12.5px; font-weight:600; border-radius:calc(var(--radius-sm) - 3px); color:var(--ink-dim); cursor:pointer; font-family:var(--font-body); }
-  .view-toggle-btn.active{ background:var(--accent); color:#fff; }
   .progress-track{ flex:1; height:6px; border-radius:999px; background:var(--line); overflow:hidden; }
   .progress-fill{ height:100%; background:var(--accent); border-radius:999px; }
   .proj-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:18px; }
@@ -127,34 +124,6 @@
   .proj-card-progress{ display:flex; align-items:center; gap:10px; }
   .proj-card-progress span{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); flex:none; }
   .proj-card-date{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-faint); }
-  .proj-list{ display:flex; flex-direction:column; gap:10px; }
-  .proj-list-row{ padding:16px 20px; display:grid; grid-template-columns:1.4fr 100px 1fr 110px 16px; align-items:center; gap:16px; cursor:pointer; transition:border-color .15s ease; }
-  .proj-list-row:hover{ border-color:var(--accent); }
-  .proj-list-row h4{ font-size:14.5px; margin:0; }
-  .proj-list-row .proj-list-progress{ display:flex; align-items:center; gap:8px; }
-  .proj-list-row .proj-list-progress span{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); flex:none; }
-  .proj-list-date{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-faint); }
-  .proj-list-row svg{ width:16px; height:16px; color:var(--ink-faint); }
-  .proj-timeline-group{ margin-bottom:34px; }
-  .proj-timeline-group:last-child{ margin-bottom:0; }
-  .proj-timeline-label{ font-family:var(--font-mono); font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--accent-ink); margin:0 0 16px; }
-  .proj-timeline-item{ display:flex; gap:20px; align-items:center; padding:22px; margin-bottom:14px; cursor:pointer; transition:border-color .15s ease; }
-  .proj-timeline-item:last-child{ margin-bottom:0; }
-  .proj-timeline-item:hover{ border-color:var(--accent); }
-  .proj-ring{ width:60px; height:60px; border-radius:50%; background:conic-gradient(var(--accent) calc(var(--pct)*1%), var(--line) 0); display:flex; align-items:center; justify-content:center; flex:none; }
-  .proj-ring span{ width:46px; height:46px; border-radius:50%; background:var(--bg-panel); display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:12px; color:var(--ink); }
-  .proj-timeline-body{ flex:1; min-width:0; }
-  .proj-timeline-body h3{ font-size:19px; margin:0 0 4px; text-wrap:balance; }
-  .proj-timeline-body p{ font-size:13.5px; color:var(--ink-dim); margin:0 0 8px; line-height:1.55; }
-  .proj-timeline-date{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-faint); }
-  @media (max-width:640px){
-    .proj-list-row{ grid-template-columns:1fr auto; grid-template-areas:"name arrow" "progress progress" "date date"; row-gap:8px; }
-    .proj-list-row h4{ grid-area:name; }
-    .proj-list-row svg{ grid-area:arrow; }
-    .proj-list-row .proj-list-progress{ grid-area:progress; }
-    .proj-list-row .proj-list-date{ grid-area:date; }
-    .proj-timeline-item{ flex-direction:column; align-items:flex-start; }
-  }
   .proj-detail-section{ margin-top:22px; padding-top:22px; border-top:1px solid var(--line); }
   .proj-detail-section:first-of-type{ margin-top:0; padding-top:0; border-top:none; }
   .proj-detail-section h4{ font-family:var(--font-mono); font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-dim); margin:0 0 10px; }
@@ -396,18 +365,9 @@
       </section>
 
       <section data-page-panel="projects" hidden>
-        <div class="page-head" style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;">
-          <div><span class="eyebrow">Vue d'ensemble</span><h1 style="margin-top:8px;">Projet</h1><p>Tous vos projets, en cours et passés.</p></div>
-          <div class="view-toggle" id="projectsDesignToggle">
-            <button class="view-toggle-btn active" data-design="1">Design 1</button>
-            <button class="view-toggle-btn" data-design="2">Design 2</button>
-            <button class="view-toggle-btn" data-design="3">Design 3</button>
-          </div>
-        </div>
+        <div class="page-head"><span class="eyebrow">Vue d'ensemble</span><h1 style="margin-top:8px;">Projet</h1><p>Tous vos projets, en cours et passés.</p></div>
         <p class="empty-note" id="noProjectsNote2" hidden>Aucun projet pour le moment — contactez votre interlocuteur LAK.</p>
         <div id="projectsDesign1"></div>
-        <div id="projectsDesign2" hidden></div>
-        <div id="projectsDesign3" hidden></div>
       </section>
 
       <section data-page-panel="reports" hidden>
@@ -650,7 +610,6 @@
   }
 
   /* ---------------- Projet (page) ---------------- */
-  var projectsDesignMode = '1';
   function projectStatusBadgeClass(status){ return status === 'termine' ? 'badge-success' : status === 'en_cours' ? 'badge-accent' : status === 'en_pause' ? 'badge-warning' : 'badge-neutral'; }
   function projectProgress(projectId){
     var items = (current.roadmap_items || []).filter(function(it){ return it.project_id === projectId; });
@@ -671,15 +630,6 @@
     var projects = current.projects || [];
     document.getElementById('noProjectsNote2').hidden = !!projects.length;
     renderProjectsDesign1(projects);
-    renderProjectsDesign2(projects);
-    renderProjectsDesign3(projects);
-    document.querySelectorAll('#projectsDesignToggle [data-design]').forEach(function(btn){
-      btn.onclick = function(){
-        projectsDesignMode = btn.dataset.design;
-        document.querySelectorAll('#projectsDesignToggle [data-design]').forEach(function(b){ b.classList.toggle('active', b === btn); });
-        ['1','2','3'].forEach(function(n){ document.getElementById('projectsDesign' + n).hidden = (n !== projectsDesignMode); });
-      };
-    });
   }
 
   function renderProjectsDesign1(projects){
@@ -696,48 +646,6 @@
     }).join('') + '</div>';
     el.querySelectorAll('[data-project-id]').forEach(function(card){
       card.addEventListener('click', function(){ openProjectDetail(card.dataset.projectId); });
-    });
-  }
-
-  function renderProjectsDesign2(projects){
-    var el = document.getElementById('projectsDesign2');
-    el.innerHTML = '<div class="proj-list">' + projects.map(function(p){
-      var pct = projectProgress(p.id);
-      return '<div class="proj-list-row plaque" data-project-id="' + p.id + '">' +
-        '<h4>' + escapeHtml(p.name) + '</h4>' +
-        '<span class="badge ' + projectStatusBadgeClass(p.status) + '">' + escapeHtml(PROJECT_STATUS_LABELS[p.status] || p.status) + '</span>' +
-        '<div class="proj-list-progress">' + (pct !== null ? '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%;"></div></div><span>' + pct + '%</span>' : '<span>—</span>') + '</div>' +
-        '<div class="proj-list-date">' + (p.target_date ? formatDate(p.target_date) : '—') + '</div>' +
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>' +
-      '</div>';
-    }).join('') + '</div>';
-    el.querySelectorAll('[data-project-id]').forEach(function(row){
-      row.addEventListener('click', function(){ openProjectDetail(row.dataset.projectId); });
-    });
-  }
-
-  function renderProjectsDesign3(projects){
-    var el = document.getElementById('projectsDesign3');
-    var order = ['en_cours', 'cadrage', 'en_pause', 'termine'];
-    var groups = order.map(function(s){ return { status:s, items: projects.filter(function(p){ return p.status === s; }) }; }).filter(function(g){ return g.items.length; });
-    el.innerHTML = groups.map(function(g){
-      return '<div class="proj-timeline-group">' +
-        '<p class="proj-timeline-label">' + escapeHtml(PROJECT_STATUS_LABELS[g.status] || g.status) + '</p>' +
-        g.items.map(function(p){
-          var pct = projectProgress(p.id);
-          return '<div class="proj-timeline-item plaque" data-project-id="' + p.id + '">' +
-            '<div class="proj-ring" style="--pct:' + (pct || 0) + ';"><span>' + (pct !== null ? pct + '%' : '—') + '</span></div>' +
-            '<div class="proj-timeline-body">' +
-              '<h3>' + escapeHtml(p.name) + '</h3>' +
-              '<p>' + escapeHtml(p.description || 'Pas encore de résumé pour ce projet.') + '</p>' +
-              (p.target_date ? '<span class="proj-timeline-date">Échéance ' + formatDate(p.target_date) + '</span>' : '') +
-            '</div>' +
-          '</div>';
-        }).join('') +
-      '</div>';
-    }).join('');
-    el.querySelectorAll('[data-project-id]').forEach(function(item){
-      item.addEventListener('click', function(){ openProjectDetail(item.dataset.projectId); });
     });
   }
 
